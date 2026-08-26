@@ -10,6 +10,7 @@
 #include "http/method.h"
 #include "http/export.h"
 #include "http/result.h"
+#include "http/url.h"
 
 namespace cpp_network {
 namespace http {
@@ -42,6 +43,12 @@ class CPP_NETWORK_HTTP_EXPORT Request {
     }
     Builder& Url(const std::string& url) {
       url_ = url;
+      return *this;
+    }
+    // Composes the request URL from a Url object (encoded via ToString()).
+    // The return type is spelled out because the method name hides the class.
+    Builder& Url(const ::cpp_network::http::Url& url) {
+      url_ = url.ToString();
       return *this;
     }
     Builder& Header(const std::string& name, const std::string& value) {

@@ -28,6 +28,12 @@ cc_library(
 )
 
 cc_library(
+    name = "url",
+    srcs = ["url.cc"],
+    deps = [PUBLIC_HEADERS],
+)
+
+cc_library(
     name = "request",
     srcs = ["request.cc"],
     hdrs = ["detail/http_constants.h"],
@@ -36,6 +42,7 @@ cc_library(
         ":error",
         ":method",
         ":result",
+        ":url",
     ],
 )
 

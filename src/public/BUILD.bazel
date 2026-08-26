@@ -12,6 +12,7 @@ cc_library(
         "include/http/error.h",
         "include/http/result.h",
         "include/http/method.h",
+        "include/http/url.h",
         "include/http/tls.h",
         "include/http/request.h",
         "include/http/response.h",
@@ -27,6 +28,7 @@ cc_library(
     deps = [
         ":public_headers",
         "@cpp_network//src/http:client",
+        "@cpp_network//src/http:url",
         "@cpp_network//src/websocket:websocket",
     ],
     visibility = ["//visibility:public"],

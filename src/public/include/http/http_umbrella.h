@@ -8,6 +8,7 @@
 #include "http/error.h"
 #include "http/result.h"
 #include "http/method.h"
+#include "http/url.h"
 #include "http/tls.h"
 #include "http/request.h"
 #include "http/response.h"
