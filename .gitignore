@@ -1,0 +1,37 @@
+# Bazel
+/bazel-*
+/bazel-bin
+/bazel-out
+/bazel-testlogs
+/bazel-cache
+/user.bazelrc
+
+# C/C++
+build/
+bin/
+obj/
+out/
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+*.obj
+*.lib
+autom4te.cache/
+config.status
+config.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

@@ -1,117 +1,102 @@
 # Quickstart: C++ Cross-Platform Network Library
 
-**Branch**: `001-cpp-network-library` | **Date**: 2026-08-26 | **Spec**: [spec.md](spec.md)
+**Branch**: `001-cpp-network-library` | **Date**: 2026-08-26（同步重构版） | **Spec**: [spec.md](spec.md)
 
 ## Overview
 
-This library provides a cross-platform C++ HTTP client with a promise-based, axios-inspired API. It supports HTTP/1.1 (v1) with WebSocket planned (v2), and adapts TLS per platform: OpenSSL on host (macOS/Linux), BoringSSL on Android.
+跨平台 C++ 网络库，**同步阻塞 API**，axios 风格易用。基于 libcurl，支持 HTTP/1.1 (v1) + WebSocket (v2)。TLS 平台适配：host（macOS/Linux）用 OpenSSL，Android 用 BoringSSL。库内无线程/事件循环/回调；异步由上层用线程池/协程包装。
 
 ## Getting Started
 
 ### Prerequisites
 
 - Bazel 6.5
-- C++17 compiler (Clang/GCC)
-- OpenSSL (host), BoringSSL (Android) — fetched via Bazel
+- C++17 编译器（Clang/GCC）
+- libcurl / OpenSSL / BoringSSL（经 Bazel 拉取）
 
 ### Add the library to your Bazel project
 
-Reference the workspace and add the public target as a dependency:
-
 ```python
-deps = ["//:netlib"]  # or the shared library target
+deps = ["//:netlib"]  # 或 shared library 目标
 ```
 
-### Platform setup (host)
+### 平台设置（host）
 
-Follow the graph_runtime convention: run the platform setup script once to generate `.user.bazelrc`.
+按 graph_runtime 惯例运行平台设置脚本生成 `.user.bazelrc`。
 
 ## Usage
 
-### 1. Implement an Executor
-
-The library does not manage threads or run an event loop. Provide an executor with task submission, delayed scheduling, and **fd-watching** (backed by your thread pool + event loop):
-
-```cpp
-#include "netlib/executor.h"
-
-class MyExecutor : public netlib::Executor {
- public:
-  void Submit(std::function<void()> task) override {
-    pool_.Post(std::move(task));
-  }
-  void Schedule(std::chrono::milliseconds delay,
-                std::function<void()> task) override {
-    pool_.PostDelayed(delay, std::move(task));
-  }
-  void WatchFd(int fd, uint32_t events,
-               std::function<void(uint32_t)> callback) override {
-    loop_.WatchFd(fd, events, std::move(callback));   // epoll/kqueue/libuv/asio
-  }
-  void UnwatchFd(int fd) override {
-    loop_.UnwatchFd(fd);
-  }
- private:
-  // Your thread pool + event loop.
-};
-
-MyExecutor g_executor;
-```
-
-### 2. Create an HttpClient
+### 1. 创建 HttpClient
 
 ```cpp
 #include "netlib/netlib.h"
 
 netlib::HttpClient client = netlib::HttpClient::Config()
-    .SetExecutor(&g_executor)
     .SetConnectTimeout(std::chrono::seconds(5))
     .SetReadTimeout(std::chrono::seconds(10))
     .SetFollowRedirects(true)
-    .Build();
+    .Build()
+    .value();   // 失败会返回 Result 错误
 ```
 
-### 3. Send a GET request (axios style)
+### 2. 发送 GET 请求（阻塞，直接返回结果）
 
 ```cpp
-client.Get("https://httpbin.org/get")
-    .Then([](netlib::HttpResponse resp) {
-      printf("Status: %d\n", resp.status_code());
-      printf("Body: %s\n", resp.body_string().c_str());
-    })
-    .Catch([](const netlib::Error& err) {
-      fprintf(stderr, "Error: %s\n", err.message().c_str());
-    });
+netlib::Result<netlib::HttpResponse> res = client.Get("https://httpbin.org/get");
+if (!res.ok()) {
+  fprintf(stderr, "Error: %s\n", res.error().message().c_str());
+  return;
+}
+printf("Status: %d\n", res->status_code());
+printf("Body: %s\n", res->body_string().c_str());
 ```
 
-### 4. Send a POST request with JSON body
-
-```cpp
-client.Post("https://httpbin.org/post", R"({"name":"netlib"})")
-    .Then([](netlib::HttpResponse resp) {
-      // handle response
-    })
-    .Catch([](const netlib::Error& err) { /* handle error */ });
-```
-
-### 5. Custom headers and per-request config
+### 3. 发送 POST 请求（JSON body）
 
 ```cpp
 netlib::HttpRequest req = netlib::HttpRequest::Builder()
     .Method(netlib::HttpMethod::kPost)
-    .Url("https://api.example.com/upload")
+    .Url("https://httpbin.org/post")
     .Header("Authorization", "Bearer token")
-    .Header("Content-Type", "application/json")
-    .JsonBody(R"({"key":"value"})")
-    .Build();
+    .JsonBody(R"({"name":"netlib"})")
+    .Build()
+    .value();
 
-client.Send(req)
-    .Then([](netlib::HttpResponse resp) { /* ... */ })
-    .Catch([](const netlib::Error& err) { /* ... */ });
+auto res = client.Send(req);
+if (!res.ok()) { /* handle error */ }
+```
+
+### 4. 自定义 headers / per-request timeout
+
+```cpp
+netlib::HttpRequest req = netlib::HttpRequest::Builder()
+    .Method(netlib::HttpMethod::kGet)
+    .Url("https://api.example.com/upload")
+    .Header("X-Custom", "value")
+    .Timeout(std::chrono::seconds(3))   // 覆盖 client 级
+    .Build().value();
+```
+
+### 5. 上层异步化（示例：线程池包装）
+
+库本身同步阻塞；上层用线程池/协程实现并发：
+
+```cpp
+std::vector<std::future<netlib::Result<netlib::HttpResponse>>> futures;
+for (auto& url : urls) {
+  futures.push_back(std::async(std::launch::async, [&client, url] {
+    return client.Get(url);
+  }));
+}
+for (auto& f : futures) {
+  auto res = f.get();
+  // ...
+}
 ```
 
 ## Next Steps
 
-- TLS configuration (CA certs, skipping verification) → see [data-model.md](data-model.md) and public API contract.
-- Streaming large response bodies → use `HttpResponse::body_stream()`.
-- WebSocket support is planned for a future phase.
+- TLS 配置（CA certs、跳过校验）→ 见 data-model.md 与 public API contract。
+- 流式大 body → `HttpResponse::body_stream()` 同步块读。
+- 重试 → 上层循环调用 `Send`（库内单次传输）。
+- WebSocket 支持为未来阶段。

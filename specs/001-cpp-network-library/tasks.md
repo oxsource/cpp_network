@@ -28,9 +28,9 @@
 
 **Purpose**: 初始化架构设计文档体系
 
-- [ ] T001 Create architecture design doc structure `docs/architecture/` and ADR subdir `docs/architecture/adr/`
-- [ ] T002 [P] Define design doc conventions and ADR template in `docs/architecture/README.md` (per plan.md structure)
-- [ ] T003 [P] Define Bazel workspace + platform definitions design (macos_arm64/macos_x86_64/linux_x86_64/linux_aarch64/android_arm64, `.bazelrc` `--config` aliases, mirroring graph_runtime) in `docs/architecture/bazel-platforms.md`
+- [x] T001 Create architecture design doc structure `docs/architecture/` and ADR subdir `docs/architecture/adr/`
+- [x] T002 [P] Define design doc conventions and ADR template in `docs/architecture/README.md` (per plan.md structure)
+- [x] T003 [P] Define Bazel workspace + platform definitions design (macos_arm64/macos_x86_64/linux_x86_64/linux_aarch64/android_arm64, `.bazelrc` `--config` aliases, mirroring graph_runtime) in `docs/architecture/bazel-platforms.md`
 
 ---
 
@@ -40,11 +40,11 @@
 
 **⚠️ CRITICAL**: No user story design can begin until this phase is complete
 
-- [ ] T004 Design `core/` Executor interface (Submit/Schedule/WatchFd/UnwatchFd) and its contract invariants in `docs/architecture/core-executor.md`
-- [ ] T005 [P] Design `Promise<T>` composition semantics (Then/Catch/Finally, executor binding, cancellation, error propagation) in `docs/architecture/core-promise.md`
-- [ ] T006 [P] Design Error taxonomy and `ErrorCode` enum (from contracts/public-api.md) in `docs/architecture/core-error.md`
-- [ ] T007 Design libcurl multi event bridge: `CURLMOPT_SOCKETFUNCTION`/`CURLMOPT_TIMERFUNCTION` → Executor WatchFd/Schedule, `curl_multi_socket_action` driving, in `docs/architecture/curl-engine-bridge.md` (depends on T004)
-- [ ] T008 Design build-time TLS backend selection via Bazel `select()` (OpenSSL host / BoringSSL Android) and `src/tls/` layout in `docs/architecture/tls-backend-selection.md`
+- [x] T004 Design 同步传输引擎 SyncEngine（共享 CURLM + curl_multi_poll 阻塞驱动、连接池复用、mutex 串行化）in `docs/architecture/sync-engine.md`（原 core-executor/curl-engine-bridge 已合并，异步抽象移除）
+- [x] T005 [P] 废弃异步 Promise/Executor 抽象（同步重构：无 Then/Catch、无 WatchFd，见 research.md Decision 1）
+- [x] T006 [P] Design Error taxonomy and `ErrorCode` enum (from contracts/public-api.md) in `docs/architecture/core-error.md`
+- [x] T007 Design libcurl multi 同步驱动：`curl_multi_poll`/`curl_multi_perform` 阻塞循环、CURLMSG_DONE 完成检测、连接池复用，in `docs/architecture/sync-engine.md`（depends on T004）
+- [x] T008 Design build-time TLS backend selection via Bazel `select()` (OpenSSL host / BoringSSL Android) and `src/tls/` layout in `docs/architecture/tls-backend-selection.md`
 
 **Checkpoint**: 架构基础设计就绪，可开始各用户故事设计
 
@@ -52,17 +52,17 @@
 
 ## Phase 3: User Story 1 - Send HTTP Request and Receive Response (Priority: P1) 🎯 MVP
 
-**Goal**: 设计 axios 风格异步 HttpClient API 及 libcurl 传输层封装，支持 GET/POST 等请求与响应读取
+**Goal**: 设计 axios 风格**同步** HttpClient API 及 libcurl 传输层封装，支持 GET/POST 等请求与响应读取
 
 **Independent Test**: 设计评审可独立验证 —— 检查 `docs/architecture/http-*.md` 是否覆盖 spec.md US1 的三个验收场景（200+body、404+自定义 header、POST JSON）
 
 ### Implementation for User Story 1
 
-- [ ] T009 [P] [US1] Design `HttpClient` public API (Get/Post/Put/Delete/Patch/Head/Options/Send returning `Promise<HttpResponse>`, axios 风格) in `docs/architecture/http-client-api.md`
-- [ ] T010 [P] [US1] Design `HttpRequest` value type + Builder (method/url/headers/body/timeout override, 不可变性) in `docs/architecture/http-request.md`
-- [ ] T011 [P] [US1] Design `HttpResponse` value type (status_code/status_text/headers/body_string/body_stream 流式) in `docs/architecture/http-response.md`
-- [ ] T012 [US1] Design transfer lifecycle: `curl_multi_add_handle` → socket/timer 事件 → Promise resolve/reject → handle 清理，in `docs/architecture/http-transfer-lifecycle.md` (depends on T007, T009)
-- [ ] T013 [US1] Design `NetworkConfig` → libcurl option 映射 (connect/read/write/total timeout、follow_redirects、max_redirects、retry) in `docs/architecture/http-config-mapping.md`
+- [x] T009 [P] [US1] Design `HttpClient` public API (Get/Post/Put/Delete/Patch/Head/Options/Send 同步返回 `Result<HttpResponse>`, axios 风格) in `docs/architecture/http-client-api.md`
+- [x] T010 [P] [US1] Design `HttpRequest` value type + Builder (method/url/headers/body/timeout override, 不可变性, `Result<HttpRequest>` Build) in `docs/architecture/http-request.md`
+- [x] T011 [P] [US1] Design `HttpResponse` value type (status_code/status_text/headers/body_string/body_stream 同步流式) in `docs/architecture/http-response.md`
+- [x] T012 [US1] Design 同步传输生命周期: 校验 → 进共享 CURLM → curl_multi_poll 阻塞驱动 → Result 返回 → handle 清理，in `docs/architecture/http-transfer-lifecycle.md` (depends on T004, T009)
+- [x] T013 [US1] Design `NetworkConfig` → libcurl option 映射 (connect/read/write/total timeout、follow_redirects、max_redirects) in `docs/architecture/http-config-mapping.md`
 
 **Checkpoint**: User Story 1 架构设计完整且可独立评审
 
@@ -76,10 +76,10 @@
 
 ### Implementation for User Story 2
 
-- [ ] T014 [P] [US2] Design `TlsConfig` type 与 `CURLOPT_SSL_*` 映射 (verify_mode/ca_certificates/client_certificate/sni_hostname) in `docs/architecture/tls-config.md`
-- [ ] T015 [P] [US2] Design 证书校验流程 (默认 kVerifyPeer、skip verification、自定义 CA) in `docs/architecture/tls-cert-validation.md`
-- [ ] T016 [US2] Design Android 平台 BoringSSL+libcurl 构建集成方案 (Bazel http_archive / NDK 预编译, API 24+) in `docs/architecture/android-boringssl-build.md`
-- [ ] T017 [US2] Design host 平台 OpenSSL+libcurl 构建集成方案 in `docs/architecture/host-openssl-build.md`
+- [x] T014 [P] [US2] Design `TlsConfig` type 与 `CURLOPT_SSL_*` 映射 (verify_mode/ca_certificates/client_certificate/sni_hostname) in `docs/architecture/tls-config.md`
+- [x] T015 [P] [US2] Design 证书校验流程 (默认 kVerifyPeer、skip verification、自定义 CA) in `docs/architecture/tls-cert-validation.md`
+- [x] T016 [US2] Design Android 平台 BoringSSL+libcurl 构建集成方案 (Bazel http_archive / NDK 预编译, API 24+) in `docs/architecture/android-boringssl-build.md`
+- [x] T017 [US2] Design host 平台 OpenSSL+libcurl 构建集成方案 in `docs/architecture/host-openssl-build.md`
 
 **Checkpoint**: User Story 2 架构设计完整，TLS 跨平台方案可独立评审
 
@@ -93,10 +93,10 @@
 
 ### Implementation for User Story 3
 
-- [ ] T018 [P] [US3] Design `NetworkConfig` 实体与流式 `HttpClient::Config` builder in `docs/architecture/network-config.md`
-- [ ] T019 [P] [US3] Design `RetryPolicy` (max_retries/retry_delay/retry_condition, 默认不重试) in `docs/architecture/retry-policy.md`
-- [ ] T020 [P] [US3] Design HTTP 代理配置设计 in `docs/architecture/proxy-config.md`
-- [ ] T021 [US3] Design 连接池调优 (CURLMOPT_MAX_HOST_CONNECTIONS、keep-alive, 委托 libcurl) in `docs/architecture/connection-pool.md`
+- [x] T018 [P] [US3] Design `NetworkConfig` 实体与流式 `HttpClient::Config` builder in `docs/architecture/network-config.md`
+- [x] T019 [P] [US3] Design `RetryPolicy` (max_retries/retry_delay/retry_condition, 默认不重试) in `docs/architecture/retry-policy.md`
+- [x] T020 [P] [US3] Design HTTP 代理配置设计 in `docs/architecture/proxy-config.md`
+- [x] T021 [US3] Design 连接池调优 (CURLMOPT_MAX_HOST_CONNECTIONS、keep-alive, 委托 libcurl) in `docs/architecture/connection-pool.md`
 
 **Checkpoint**: User Story 3 架构设计完整
 
@@ -110,9 +110,9 @@
 
 ### Implementation for User Story 4
 
-- [ ] T022 [P] [US4] Design WebSocket API surface (libcurl 7.86+ websocket, 连接/消息收发/关闭) in `docs/architecture/websocket-api.md`
-- [ ] T023 [P] [US4] Design 协议无关扩展机制 (核心 Promise/Executor 层如何复用, 新协议接入路径) in `docs/architecture/protocol-extension.md`
-- [ ] T024 [US4] Design WebSocket 消息流与断线重连处理 in `docs/architecture/websocket-message-flow.md`
+- [x] T022 [P] [US4] Design WebSocket API surface (libcurl 7.86+ websocket, 同步 Connect/Send/Receive/Close) in `docs/architecture/websocket-api.md`
+- [x] T023 [P] [US4] Design 协议扩展机制 (SyncEngine 通用传输驱动复用, 新协议接入路径) in `docs/architecture/protocol-extension.md`
+- [x] T024 [US4] Design WebSocket 消息流与断线重连处理 (同步) in `docs/architecture/websocket-message-flow.md`
 
 **Checkpoint**: 所有用户故事架构设计完成
 
@@ -216,3 +216,4 @@ With multiple designers:
 - Commit after each task or logical group
 - 避免：模糊任务、同文件冲突、破坏独立性的跨 story 依赖
 - 后续 `/speckit.implement` 将以本 tasks.md 及 `docs/architecture/` 文档为输入
+- **2026-08-26 同步重构**：架构由异步（Promise/Executor/WatchFd）改为**同步阻塞 API**（用户决策）。`core-executor.md`/`core-promise.md`/`curl-engine-bridge.md` 已移除并合并为 `sync-engine.md`；contracts/data-model/spec 已同步更新。T004/T005/T007 描述已改写反映新架构。

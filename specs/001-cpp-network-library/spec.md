@@ -110,10 +110,10 @@ A developer needs bidirectional real-time communication. After the initial HTTP 
 - **FR-015**: The library MUST follow Google C++ Style Guide for all source code.
 - **FR-016**: The library MUST provide a public API with platform-independent headers that do not expose TLS backend implementation details.
 - **FR-017**: The library MUST support WebSocket protocol (upgrade from HTTP, message send/receive, close handshake) in a future phase.
-- **FR-018**: The library MUST provide a fully asynchronous (promise-based) API for all I/O operations, returning future-like abstractions without blocking the caller. Threading and execution are managed externally by the user.
-- **FR-021**: The library MUST provide a protocol-independent abstraction layer that decouples the async I/O execution model from the specific network protocol (HTTP, WebSocket, etc.), enabling reuse across protocols without internal thread management.
+- **FR-018**: The library MUST provide a synchronous (blocking) API for all I/O operations, returning results directly. The library MUST NOT implement any event loop, thread scheduling, Promise, or coroutine abstractions — asynchronous behavior is implemented externally by the user.
+- **FR-021**: The library MUST provide a protocol-independent engine layer that supports multiple protocols (HTTP, WebSocket, etc.) without protocol-specific coupling in the transport engine.
 - **FR-019**: The library MUST support custom certificate validation (allow skipping verification, provide custom CA certificates).
-- **FR-020**: The library MUST implement a simple, promise-based API design for constructing and executing HTTP requests, inspired by JavaScript's axios library. All future protocol APIs follow the same principle.
+- **FR-020**: The library MUST implement a simple, ergonomic API design for constructing and executing HTTP requests, inspired by JavaScript's axios library (simple per-verb methods, unified config). All future protocol APIs follow the same principle.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -121,10 +121,9 @@ A developer needs bidirectional real-time communication. After the initial HTTP 
 - **HttpRequest**: Represents an outgoing HTTP request. Contains HTTP method, URL, headers, and optional body. Immutable after construction.
 - **HttpResponse**: Represents an incoming HTTP response. Contains status code, status text, headers, and response body. Provides access to body as string, bytes, or stream.
 - **NetworkConfig**: Configuration object for the HttpClient. Contains timeout settings, retry policy, proxy settings, TLS configuration, and connection pool settings.
-- **TlsAdapter**: Abstract interface for TLS backend implementations. Defines methods for TLS handshake, certificate verification, and encrypted data read/write. Concrete implementations exist for OpenSSL and BoringSSL.
-- **WebSocket**: (Future) Represents an active WebSocket connection. Provides methods for sending messages, receiving messages via callback, and closing the connection.
-- **ConnectionPool**: Manages a pool of persistent TCP/TLS connections to reduce connection establishment overhead. Supports configurable max connections per host and keep-alive duration.
-- **Executor**: An external abstraction (provided by the user) that defines how async tasks are dispatched and executed. The library accepts and uses the user-provided executor for all async operations, without managing threads internally.
+- **TlsConfig**: TLS configuration for the HttpClient (verify mode, CA certificates, client certificate, SNI). Maps to libcurl SSL options; the actual TLS backend (OpenSSL host / BoringSSL Android) is selected at build time.
+- **WebSocket**: (Future) Represents an active WebSocket connection. Provides synchronous methods for sending messages, receiving messages, and closing the connection.
+- **ConnectionPool**: Manages a pool of persistent TCP/TLS connections to reduce connection establishment overhead. Managed internally by libcurl; exposes tuning knobs (max connections per host, keep-alive duration).
 
 ## Success Criteria *(mandatory)*
 
@@ -143,10 +142,11 @@ A developer needs bidirectional real-time communication. After the initial HTTP 
 
 ### Session 2026-08-26
 
-- Q: Which I/O model should the library use for handling network connections? → A: Fully asynchronous (promise-based) pattern, with a protocol-independent abstraction layer. Thread scheduling is external, not managed by the library.
+- Q: Which I/O model should the library use for handling network connections? → A: 库仅提供基础网络请求；事件与流程编排不在库内实现。对外为**同步阻塞 API**，异步由上层用线程池/协程包装。
 - Q: What observability capabilities should the library provide? → A: Minimal — error codes and return values only. No built-in logging, metrics, or tracing.
-- Q: What API design pattern should HTTP and future protocols follow? → A: Reference axios (JavaScript) — promise-based, simple, chainable API design. All future protocol implementations follow the same principle.
-- Q: Should the library include its own thread scheduling / executor? → A: No. Threading and scheduling are controlled externally by the user. The library only provides async I/O operations.
+- Q: What API design pattern should HTTP and future protocols follow? → A: Reference axios (JavaScript) — simple, ergonomic, per-verb methods + unified config. All future protocol implementations follow the same principle.
+- Q: Should the library include its own thread scheduling / executor? → A: No. Threading, events, and flow orchestration are controlled externally by the user. The library only provides basic network requests (synchronous).
+- Q: Promise 在网络请求中是否合适？→ A: 不合适（C++ 缺 async/await 语法糖，裸 Promise 链复杂且事件/流程应在库外）。改用同步阻塞 API，库内不实现 Promise/协程/事件桥接。
 
 ## Assumptions
 
@@ -159,5 +159,5 @@ A developer needs bidirectional real-time communication. After the initial HTTP 
 - The project follows the same engineering conventions as graph_runtime: Bazel platform definitions, cc_library/cc_test/cc_binary targets, platform-specific select(), and visibility-controlled packages.
 - External dependencies (OpenSSL, BoringSSL, zlib for compression) will be managed via Bazel WORKSPACE rules or http_archive.
 - The library will be delivered as both a static library and a shared library, following the graph_runtime pattern.
-- The library does not include built-in logging, metrics, or tracing. All error information is communicated via return values, error codes, or future/exception mechanisms.
-- The library does not manage threads or provide an internal event loop. All async execution and scheduling is delegated to the user-provided executor.
+- The library does not include built-in logging, metrics, or tracing. All error information is communicated via return values and error codes.
+- The library does not manage threads, run an event loop, or implement Promise/coroutine abstractions. It provides a synchronous blocking API; async/flow orchestration is the user's responsibility.

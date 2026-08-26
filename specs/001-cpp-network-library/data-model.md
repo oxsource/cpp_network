@@ -6,13 +6,13 @@
 
 ### HttpClient
 
-- **Purpose**: Main entry point for making network requests. Holds configuration and the libcurl multi handle.
+- **Purpose**: Main entry point for making network requests. Holds configuration and the shared libcurl multi handle.
 - **Attributes**:
   - `config: NetworkConfig` — client-wide settings (timeouts, retry, proxy, TLS).
-  - `curl_multi: CurlMultiHandle` — libcurl multi handle (owns connections internally).
-  - `executor: Executor` — user-provided async executor (Submit/Schedule/WatchFd).
-- **Relationships**: owns `NetworkConfig`, `CurlMultiHandle`; depends on `Executor`.
-- **Lifecycle**: constructed via fluent `Config`; reuse across many requests; thread-safe for concurrent request dispatch (libcurl multi serializes transfers).
+  - `curl_multi: CurlMultiHandle` — shared libcurl multi handle（owns connections, mutex 保护）。
+  - `mu_: mutex` — 串行化多线程并发 `Send` 对 CURLM 的访问。
+- **Relationships**: owns `NetworkConfig`, `CurlMultiHandle`; 无线程/无事件循环（同步 API）。
+- **Lifecycle**: constructed via fluent `Config`; reuse across many requests; thread-safe for concurrent request dispatch (multi-thread 并发 Send 经锁串行化)。
 
 ### HttpRequest
 
@@ -73,35 +73,29 @@
 
 ### ConnectionPool (delegated to libcurl)
 
-- **Purpose**: Reuse persistent TCP/TLS connections. **Owned and managed internally by libcurl** (`CURLMOPT_MAX_HOST_CONNECTIONS`, `CURLMOPT_MAXCONNECTS`).
+- **Purpose**: Reuse persistent TCP/TLS connections. **Owned and managed internally by libcurl** (`CURLMOPT_MAX_HOST_CONNECTIONS`, `CURLMOPT_MAXCONNECTS`)，经共享 CURLM 在同步请求间复用。
 - **Attributes** (exposed via `NetworkConfig`):
   - `max_connections_per_host: int` → `CURLMOPT_MAX_HOST_CONNECTIONS`.
   - `keep_alive_duration: Duration` → libcurl connection reuse timeout.
 - **State transitions** (internal to libcurl): idle ↔ in-use → closed (keep-alive expiry | error | shutdown).
 
-### Executor (external)
+### （已移除）Executor / Promise
 
-- **Purpose**: User-provided async execution abstraction, extended with fd-watching to drive libcurl's multi interface.
-- **Attributes** (interface contract):
-  - `Submit(fn)` — schedule a task.
-  - `Schedule(delay, fn)` — schedule a delayed task (timeouts, retries, libcurl timers).
-  - `WatchFd(fd, events, callback)` — watch socket readiness (bridges libcurl `CURLMOPT_SOCKETFUNCTION`).
-  - `UnwatchFd(fd)` — cancel a watch.
-- **Ownership**: provided by the caller; library never creates threads or runs an event loop.
+- 同步 API 重构后，`Executor`、`Promise`、`WatchFd` 实体**不再存在**。库内无异步抽象；事件/流程/线程由上层控制（见 research.md Decision 1）。
 
 ## State Transitions
 
-### Request Lifecycle
+### Request Lifecycle（同步）
 
 ```text
-Created → Queued(curl_multi_add_handle) → libcurl performs transfer internally
-        → Complete(response) | Failed(error)
+Send(req) → 校验 → 加锁进共享 CURLM → curl_multi_poll 阻塞等待该请求完成
+        → Complete(Result<HttpResponse>) | Failed(Result<Error>)
 ```
 
-- **Retry**: `Failed(error)` where retry_condition matches → re-queued (attempts+1).
-- **Redirect**: handled internally by libcurl (`CURLOPT_FOLLOWLOCATION`, `CURLOPT_MAXREDIRS`).
-- **Timeout**: handled internally by libcurl timeout options.
-- **Events**: libcurl drives progress via `CURLMOPT_SOCKETFUNCTION` (→ `Executor::WatchFd`) and `CURLMOPT_TIMERFUNCTION` (→ `Executor::Schedule`); the library resolves the promise when the transfer completes.
+- **Retry**：库内**不自动重试**；由上层循环调用 `Send` 实现（RetryPolicy 仅承载配置）。
+- **Redirect**：由 libcurl 内部处理（`CURLOPT_FOLLOWLOCATION`/`CURLOPT_MAXREDIRS`）。
+- **Timeout**：由 libcurl 选项处理（映射见 http-config-mapping.md）。
+- **线程**：多线程并发 `Send` 经 mutex 串行化进共享 CURLM，连接池复用；`curl_multi_poll` 阻塞调用线程。
 
 ### Connection Lifecycle (internal to libcurl)
 
