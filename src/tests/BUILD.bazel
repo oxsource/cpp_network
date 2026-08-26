@@ -10,3 +10,48 @@ cc_test(
         "@googletest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "http_integration_test",
+    srcs = ["http_integration_test.cc"],
+    data = ["test_server.py"],
+    deps = [
+        "@cpp_network//src/http:client",
+        "@cpp_network//src/public:public_headers",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "https_test",
+    srcs = ["https_test.cc"],
+    data = [
+        "certs/ca_cert.pem",
+        "certs/ca_key.pem",
+        "certs/client_cert.pem",
+        "certs/client_key.pem",
+        "certs/server_cert.pem",
+        "certs/server_key.pem",
+        "test_tls_server.py",
+    ],
+    deps = [
+        "@cpp_network//src/http:client",
+        "@cpp_network//src/public:public_headers",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "config_test",
+    srcs = ["config_test.cc"],
+    data = ["test_server.py"],
+    deps = [
+        "@cpp_network//src/http:client",
+        "@cpp_network//src/public:public_headers",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+

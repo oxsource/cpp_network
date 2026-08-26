@@ -4,20 +4,20 @@
 
 ## Overview
 
-netlib 库的 HTTP 同步实现。类命名简化：`Client`/`Request`/`Response`/`Options`/`Tls`。发送 GET/POST、HTTPS（OpenSSL + 证书配置）、指定网卡。
+cpp_network::http 库的 HTTP 同步实现。类命名简化：`Client`/`Request`/`Response`/`Options`/`Tls`（命名空间 `cpp_network::http`）。发送 GET/POST、HTTPS（OpenSSL + 证书配置）、指定网卡。
 
 ## Usage
 
 ### 1. 创建 Client（≤10 行完成 GET）
 
 ```cpp
-#include "netlib/netlib.h"
+#include "http/http_umbrella.h"
 
-netlib::Options opts;
+cpp_network::http::Options opts;
 opts.SetConnectTimeout(std::chrono::seconds(5))
     .SetFollowRedirects(true);
 
-netlib::Result<netlib::Client> client = netlib::Client::Create(opts);
+cpp_network::http::Result<cpp_network::http::Client> client = cpp_network::http::Client::Create(opts);
 if (!client.ok()) { /* options 校验失败 */ }
 
 auto res = client->Get("https://httpbin.org/get");
@@ -31,10 +31,10 @@ printf("Status: %d, Body: %s\n", res->status(), res->body().c_str());
 ### 2. POST + JSON body
 
 ```cpp
-netlib::Request req = netlib::Request::Builder()
-    .Method(netlib::Method::kPost)
+cpp_network::http::Request req = cpp_network::http::Request::Builder()
+    .SetMethod(cpp_network::http::Method::kPost)
     .Url("https://httpbin.org/post")
-    .JsonBody(R"({"name":"netlib"})")
+    .JsonBody(R"({"name":"cpp_network"})")
     .Build().value();
 
 auto res = client->Send(req);
@@ -43,14 +43,14 @@ auto res = client->Send(req);
 ### 3. HTTPS + 证书配置
 
 ```cpp
-netlib::Tls tls;
+cpp_network::http::Tls tls;
 tls.SetCaFile("/path/to/custom_ca.pem");      // 内网 CA
 // 或注入自签证书：
 tls.SetCaCertificate("-----BEGIN CERTIFICATE-----\n...");
 // mTLS 客户端证书：
 tls.SetClientCertificate("/path/to/cert.pem", "/path/to/key.pem");
 // 跳过校验（仅测试）：
-tls.SetVerifyMode(netlib::VerifyMode::kSkipVerification);
+tls.SetVerifyMode(cpp_network::http::VerifyMode::kSkipVerification);
 
 opts.SetTls(tls);
 ```

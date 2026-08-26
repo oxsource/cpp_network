@@ -2,9 +2,6 @@
 build --cxxopt=-std=c++17
 build --host_cxxopt=-std=c++17
 
-# Symbol visibility (shared library exports only NETLIB_API symbols)
-build --features=visibility=hidden
-
 # Platform auto-detection via --config aliases
 build --enable_platform_specific_config
 

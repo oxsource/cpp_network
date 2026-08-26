@@ -1,13 +1,15 @@
-#include "netlib/netlib.h"
+#include "http/http_umbrella.h"
 
 #include "gtest/gtest.h"
 
-namespace netlib {
+namespace cpp_network {
+namespace http {
 
 // Smoke test verifying the engineering skeleton is buildable and testable.
 TEST(SmokeTest, UmbrellaHeaderCompiles) {
-  // NETLIB_API is defined by netlib_export.h (included via netlib.h).
-  EXPECT_NE(nullptr, "netlib umbrella header compiles");
+  // cpp_network::http umbrella header (http.h) compiles and exposes types.
+  EXPECT_NE(nullptr, "http umbrella header compiles");
 }
 
-}  // namespace netlib
+}  // namespace http
+}  // namespace cpp_network

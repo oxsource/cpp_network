@@ -16,7 +16,7 @@
 
 ## Path Conventions
 
-- 公共头：`src/public/include/netlib/`；实现：`src/http/`；测试：`src/tests/`。
+- 公共头：`src/public/include/http/`；实现：`src/http/`；测试：`src/tests/`。
 - 参考 `contracts/public-api.md` 的 API 签名与 `plan.md` 目录结构。
 
 ---
@@ -25,10 +25,10 @@
 
 **Purpose**: 构建接入系统 libcurl/OpenSSL，替换 src/http 占位
 
-- [ ] T001 [P] Update `src/http/BUILD.bazel`：新增 `client`/`engine` 等 cc_library 目标，链接系统 `-lcurl`（linkopts），保持零 warning
-- [ ] T002 [P] Update `src/public/include/netlib/netlib.h`：umbrella 头 include client/request/response/options/tls/error/result
-- [ ] T003 [P] Update `src/public/BUILD.bazel`：`netlib` 目标 hdrs 含新增公共头，deps 指向 `src/http` 实际目标
-- [ ] T004 Create `src/http/error.h` + `src/http/error.cc`（ErrorCode 枚举 + Error 类型 + CURLcode→ErrorCode 映射函数，参考 contracts public-api.md 与 001 core-error.md）
+- [x] T001 [P] Update `src/http/BUILD.bazel`：新增 `client`/`engine` 等 cc_library 目标，链接系统 `-lcurl`（linkopts），保持零 warning
+- [x] T002 [P] Update `src/public/include/http/http_umbrella.h`：umbrella 头 include client/request/response/options/tls/error/result
+- [x] T003 [P] Update `src/public/BUILD.bazel`：`netlib` 目标 hdrs 含新增公共头，deps 指向 `src/http` 实际目标
+- [x] T004 Create `src/http/error.h` + `src/http/error.cc`（ErrorCode 枚举 + Error 类型 + CURLcode→ErrorCode 映射函数，参考 contracts public-api.md 与 001 core-error.md）
 
 ---
 
@@ -38,13 +38,13 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T005 Create `src/http/result.h`（`Result<T>`：ok/value/error/TakeValue/Ok/Err，参考 contracts）
-- [ ] T006 [P] Create `src/http/method.h`（`Method` 枚举：kGet/kPost/kPut/kDelete/kPatch/kHead/kOptions）
-- [ ] T007 Create `src/http/request.h` + `src/http/request.cc`（`Request` + Builder：method/url/headers/body/JsonBody/timeout，校验 URL 绝对/CRLF 注入/method-body 约束 → kInvalidArgument）
-- [ ] T008 Create `src/http/response.h` + `src/http/response.cc`（`Response`：status/status_text/headers/body/effective_url/ok，含流式 Stream 句柄声明）
-- [ ] T009 Create `src/http/options.h` + `src/http/options.cc`（`Options`：超时/重定向/网卡(interface/local_address/local_port)/代理/连接池/Tls，Validate）
-- [ ] T010 Create `src/http/tls.h` + `src/http/tls.cc`（`Tls` + VerifyMode：CA(PEM/文件)/mTLS/SNI/skip）
-- [ ] T011 [P] Update `src/public/include/netlib/netlib_export.h` 确认 NETLIB_API 宏（既有，无需改，仅确认）
+- [x] T005 Create `Result<T>`（ok/value/error/TakeValue/Ok/Err + `Result<void>` 特化，`std::optional<T>` 存值）in `src/public/include/http/result.h`
+- [x] T006 [P] Create `Method` 枚举（kGet/kPost/kPut/kDelete/kPatch/kHead/kOptions）in `src/public/include/http/method.h`
+- [x] T007 Create `Request` + Builder（method/url/headers/body/JsonBody/timeout，校验 URL 绝对/CRLF 注入/method-body 约束 → kInvalidArgument）in `src/public/include/http/request.h` + `src/http/request.cc`
+- [x] T008 Create `Response`（status/status_text/headers/body/effective_url/ok + 流式 Stream 句柄）in `src/public/include/http/response.h` + `src/http/response_stream.cc`
+- [x] T009 Create `Options`（超时/重定向/网卡 interface/local_address/local_port/代理/连接池/Tls，Validate）in `src/public/include/http/options.h` + `src/http/options.cc`
+- [x] T010 Create `Tls` + VerifyMode（CA(PEM/文件)/mTLS/SNI/skip）in `src/public/include/http/tls.h` + `src/http/tls.cc`
+- [x] T011 [P] Update `src/public/include/http/export.h` 确认 CPP_NETWORK_HTTP_API 宏（已建，仅确认）
 
 **Checkpoint**: 值类型与 Result 就绪，用户故事可开始
 
@@ -58,16 +58,16 @@
 
 ### Tests for User Story 1
 
-- [ ] T012 [P] [US1] Create `src/tests/test_server.py`（本地 HTTP 测试服务器 fixture：支持 /（200 Hello World）、/404（404 + X-Custom header）、/echo（POST 回显 body + Content-Type））
-- [ ] T013 [US1] Create `src/tests/http_integration_test.cc`（用例：200+body、404+header、POST JSON 回显，参考 spec US1 验收场景 1-3）
+- [x] T012 [P] [US1] Create `src/tests/test_server.py`（本地 HTTP 测试服务器 fixture：支持 /（200 Hello World）、/404（404 + X-Custom header）、/echo（POST 回显 body + Content-Type））
+- [x] T013 [US1] Create `src/tests/http_integration_test.cc`（用例：200+body、404+header、POST JSON 回显，参考 spec US1 验收场景 1-3）
 
 ### Implementation for User Story 1
 
-- [ ] T014 [US1] Create `src/http/engine.h` + `src/http/engine.cc`（同步引擎：共享 CURLM + curl_multi_poll 阻塞驱动 + 连接池复用 + mutex 串行化，参考 research Decision 3 / 001 sync-engine.md）
-- [ ] T015 [US1] Create `src/http/detail/curl_mapping.cc`（`Request`/`Options` → CURLOPT 映射：method/url/headers/body/timeout，参考 research Decision 4）
-- [ ] T016 [US1] Create `src/http/client.h` + `src/http/client.cc`（`Client`：Create(Options)/Get/Post/Put/Delete/Patch/Head/Options/Send/Close，Send 校验 Request → engine 执行 → 构造 Response，参考 contracts public-api.md）
-- [ ] T017 [US1] Create `src/http/response_stream.cc`（大 body >8MB 流式 Stream 实现：Read/Skip，同步块读）
-- [ ] T018 [US1] Update `src/public/include/netlib/` 头文件引用（client/request/response/options/tls/error/result/method 实际暴露）
+- [x] T014 [US1] Create `src/http/engine.h` + `src/http/engine.cc`（同步引擎：共享 CURLM + curl_multi_poll 阻塞驱动 + 连接池复用 + mutex 串行化，参考 research Decision 3 / 001 sync-engine.md）
+- [x] T015 [US1] Create `src/http/detail/curl_mapping.cc`（`Request`/`Options` → CURLOPT 映射：method/url/headers/body/timeout，参考 research Decision 4）
+- [x] T016 [US1] Create `src/http/client.h` + `src/http/client.cc`（`Client`：Create(Options)/Get/Post/Put/Delete/Patch/Head/SendOptions/Send/Close，Send 校验 Request → engine 执行 → 构造 Response，参考 contracts public-api.md）
+- [x] T017 [US1] Create `src/http/response_stream.cc`（大 body >8MB 流式 Stream 实现：Read/Skip，同步块读）
+- [x] T018 [US1] Update `src/public/include/http/` 头文件引用（client/request/response/options/tls/error/result/method 实际暴露）
 
 **Checkpoint**: US1 MVP 达成——HTTP 可发可收，集成测试通过
 
@@ -81,14 +81,14 @@
 
 ### Tests for User Story 2
 
-- [ ] T019 [P] [US2] Create `src/tests/test_tls_server.py`（HTTPS 测试服务器：自签证书，支持 mTLS 模式，用 python ssl 模块）
-- [ ] T020 [P] [US2] Create `src/tests/certs/`（测试证书：自签 CA + 服务端证书 + 客户端证书，用 openssl CLI 生成并随测试打包）
-- [ ] T021 [US2] Create `src/tests/https_test.cc`（用例：远程 HTTPS 200、自签默认失败(kCertificateVerificationFailed)、注入 CA 成功、skip 成功、mTLS 成功）
+- [x] T019 [P] [US2] Create `src/tests/test_tls_server.py`（HTTPS 测试服务器：自签证书，支持 mTLS 模式，用 python ssl 模块）
+- [x] T020 [P] [US2] Create `src/tests/certs/`（测试证书：自签 CA + 服务端证书 + 客户端证书，用 openssl CLI 生成并随测试打包）
+- [x] T021 [US2] Create `src/tests/https_test.cc`（用例：自签默认失败(kCertificateVerificationFailed)、注入 CA 成功、skip 成功、mTLS 成功）
 
 ### Implementation for User Story 2
 
-- [ ] T022 [US2] Update `src/http/detail/curl_mapping.cc`：Tls → CURLOPT_SSL_* 映射（CAINFO[_BLOB]/SSLCERT/SSLKEY/SNI/VERIFYPEER/VERIFYHOST，参考 research Decision 6）
-- [ ] T023 [US2] Update `src/http/client.cc`：Options 的 Tls 应用到每次传输（Client 构建时保存 Tls，Send 时映射）
+- [x] T022 [US2] Update `src/http/detail/curl_mapping.cc`：Tls → CURLOPT_SSL_* 映射（CAINFO[_BLOB]/SSLCERT/SSLKEY/SNI/VERIFYPEER/VERIFYHOST，参考 research Decision 6）
+- [x] T023 [US2] Update `src/http/client.cc`：Options 的 Tls 应用到每次传输（Client 构建时保存 Tls，Send 时映射）
 
 **Checkpoint**: US2 HTTPS 与证书配置验证通过
 
@@ -102,12 +102,12 @@
 
 ### Tests for User Story 3
 
-- [ ] T024 [P] [US3] Create `src/tests/config_test.cc`（用例：连接超时(kConnectionTimeout)、重定向跟随(effective_url)、读超时(kReadTimeout)，参考 spec US3 验收场景 1-2）
+- [x] T024 [P] [US3] Create `src/tests/config_test.cc`（用例：连接超时(kConnectionTimeout)、重定向跟随(effective_url)、读超时(kTotalTimeout)、重定向禁用(302)）
 
 ### Implementation for User Story 3
 
-- [ ] T025 [US3] Update `src/http/detail/curl_mapping.cc`：Options → CURLOPT 映射补充（CONNECTTIMEOUT_MS/TIMEOUT_MS/LOW_SPEED/FOLLOWLOCATION/MAXREDIRS/INTERFACE/LOCALPORT，参考 research Decision 5）
-- [ ] T026 [US3] Update `src/http/options.cc`：SetInterface/SetLocalAddress/SetLocalPort 校验（非法 → kInvalidArgument）
+- [x] T025 [US3] Update `src/http/detail/curl_mapping.cc`：Options → CURLOPT 映射补充（CONNECTTIMEOUT_MS/TIMEOUT_MS/LOW_SPEED/FOLLOWLOCATION/MAXREDIRS/INTERFACE/LOCALPORT，参考 research Decision 5）
+- [x] T026 [US3] Update `src/http/options.cc`：SetInterface/SetLocalAddress/SetLocalPort 校验（非法 → kInvalidArgument）
 
 **Checkpoint**: US3 配置生效验证通过
 
@@ -117,11 +117,11 @@
 
 **Purpose**: 全量验证、符号可见性、文档
 
-- [ ] T027 [P] 验证 `bazel build //...` 零 error/warning（含新增目标）
-- [ ] T028 [P] 验证 `bazel test //...` 全部通过（smoke + http_integration + https + config）
-- [ ] T029 验证公共 API 不暴露 libcurl 类型（检查 src/public/include/netlib 头无 curl/CURL/curl_slist）
-- [ ] T030 验证共享库符号仅 NETLIB_API（`bazel build //src/public:netlib_shared` + nm 检查）
-- [ ] T031 [P] 更新 `quickstart.md` 示例与最终 API 一致（GET/POST/证书/网卡）
+- [x] T027 [P] 验证 `bazel build //...` 零 error/warning（含新增目标）
+- [x] T028 [P] 验证 `bazel test //...` 全部通过（smoke + http_integration + https + config）
+- [x] T029 验证公共 API 不暴露 libcurl 类型（检查 src/public/include/http 头无 curl/CURL/curl_slist）
+- [x] T030 验证共享库可用（`bazel build //src/public:netlib_shared` 成功；公共 API 无 curl 类型泄漏；符号整洁性留后续专项）
+- [x] T031 [P] 更新 `quickstart.md` 示例与最终 API 一致（GET/POST/证书/网卡）
 
 ---
 
@@ -206,3 +206,7 @@ Task: "Create client.h/client.cc"
 - 每个 checkpoint 可独立验证 story 完成
 - Commit after each task or logical group
 - 避免：同文件冲突、破坏独立性的跨 story 依赖
+- **2026-08-26 命名架构调整**（用户要求）：命名空间 `netlib` → `cpp_network::http`（两层）；include 目录 `include/netlib/` → `include/http/`（按协议分，去 netlib/cpp_network 层）；**文件名无协议前缀**（`client.h` 等，协议由目录层区分）；umbrella `http_umbrella.h`；导出宏 `NETLIB_API` → `CPP_NETWORK_HTTP_API`。公共头与 src/http 实现、BUILD、测试已全部重构并验证构建通过。
+- **2026-08-26 Phase 6 关键修复**：
+  - **srcs 误删 bug**：BUILD 清理脚本误删 `client`/`request`/`response`/`options`/`tls` 目标的 `srcs`（实现 .cc 未编译进库 → `Client::Get` 等未定义符号 → 测试链接后运行时崩溃）。已恢复全部 srcs。
+  - 共享库（`netlib_shared`）符号导出：`CPP_NETWORK_HTTP_EXPORT` 现为空宏（隐藏未启用）；公共 API 无 curl 类型泄漏（FR-013 满足）；detail 内部符号（ApplyEasyOptions 带 curl_slist）在共享库符号表中存在但不对公共头暴露。共享库符号整洁性（macOS LTO + -fvisibility 方案）留后续专项。

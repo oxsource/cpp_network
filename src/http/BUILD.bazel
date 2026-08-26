@@ -1,13 +1,102 @@
-# Placeholder library for the HTTP protocol implementation.
-# Actual HTTP implementation follows the 001 proposal architecture docs
-# (docs/architecture/http-*.md) in a later implementation phase.
+# HTTP implementation for the cpp_network library (synchronous API over libcurl).
+# Public type definitions live in //src/public:public_headers; this package
+# provides the implementation translation units.
 package(default_visibility = [
     "@cpp_network//src/public:__pkg__",
+    "@cpp_network//src/tests:__pkg__",
 ])
 
+PUBLIC_HEADERS = "@cpp_network//src/public:public_headers"
 cc_library(
-    name = "http",
-    hdrs = [],
-    srcs = [],
-    deps = [],
+    name = "error",
+    srcs = ["error.cc"],
+    deps = [PUBLIC_HEADERS],
+)
+
+cc_library(
+    name = "result",
+    deps = [
+        PUBLIC_HEADERS,
+        ":error",
+    ],
+)
+
+cc_library(
+    name = "method",
+    deps = [PUBLIC_HEADERS],
+)
+
+cc_library(
+    name = "tls",
+    srcs = ["tls.cc"],
+    deps = [
+        PUBLIC_HEADERS,
+        ":error",
+    ],
+)
+
+cc_library(
+    name = "request",
+    srcs = ["request.cc"],
+    deps = [
+        PUBLIC_HEADERS,
+        ":error",
+        ":method",
+        ":result",
+    ],
+)
+
+cc_library(
+    name = "response",
+    srcs = ["response_stream.cc"],
+    deps = [
+        PUBLIC_HEADERS,
+        ":error",
+        ":result",
+    ],
+)
+
+cc_library(
+    name = "options",
+    srcs = ["options.cc"],
+    deps = [
+        PUBLIC_HEADERS,
+        ":error",
+        ":result",
+        ":tls",
+    ],
+)
+
+cc_library(
+    name = "engine",
+    srcs = ["engine.cc", "detail/curl_mapping.cc"],
+    hdrs = ["engine.h", "detail/curl_mapping.h"],
+    deps = [
+        PUBLIC_HEADERS,
+        ":error",
+        ":method",
+        ":options",
+        ":request",
+        ":response",
+        ":result",
+        ":tls",
+    ],
+    linkopts = ["-lcurl"],
+)
+
+cc_library(
+    name = "client",
+    srcs = ["client.cc"],
+    deps = [
+        PUBLIC_HEADERS,
+        ":engine",
+        ":error",
+        ":method",
+        ":options",
+        ":request",
+        ":response",
+        ":result",
+        ":tls",
+    ],
+    linkopts = ["-lcurl"],
 )

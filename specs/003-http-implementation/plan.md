@@ -65,7 +65,7 @@ src/http/                        # HTTP 实现（替换占位）
 ├── engine.h / engine.cc         # 同步传输引擎（共享 CURLM + curl_multi_poll）
 └── detail/
     └── curl_mapping.cc          # Request/Options/Tls → CURLOPT 映射
-src/public/include/netlib/       # 公共 API 头（由 src/http 导出）
+src/public/include/http/       # 公共 API 头（由 src/http 导出，http_ 前缀）
 ├── netlib.h                     # umbrella（include client/request/response/options/tls/error/result）
 └── netlib_export.h
 src/tests/
@@ -76,7 +76,7 @@ src/tests/
 └── config_test.cc               # 配置生效测试（US3）
 ```
 
-**Structure Decision**: 在 `src/http/` 落地全部实现（002 已建占位目录）。公共头经 `src/public/include/netlib/` 暴露，内部实现（engine/curl_mapping）隔离，不泄漏 libcurl 类型（FR-013）。
+**Structure Decision**: 在 `src/http/` 落地全部实现（002 已建占位目录）。公共头经 `src/public/include/http/` 暴露（命名空间 `cpp_network::http`，文件名 `http_` 前缀），内部实现（engine/curl_mapping）隔离，不泄漏 libcurl 类型（FR-013）。
 
 ## Complexity Tracking
 

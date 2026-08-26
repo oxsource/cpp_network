@@ -8,13 +8,17 @@
 
 **Input**: User description: "设计实现并验证http"
 
-**类命名约定**: 简化优雅——`Client`（HttpClient）、`Request`（HttpRequest）、`Response`（HttpResponse）、`Options`（NetworkConfig/TlsConfig 统一配置）、`Method`（HttpMethod）、`Error`/`Result`。公共命名空间 `netlib`。
+**命名规范**:
+- **命名空间两层**：`cpp_network::http`（根 `cpp_network` + 协议子命名空间 `http`；未来 `cpp_network::ws`）。
+- **类名简化**：`Client`/`Request`/`Response`/`Options`/`Tls`/`Method`/`Error`/`Result`（在 `cpp_network::http` 命名空间内，无 Http 前缀冗余）。
+- **文件名**：无协议前缀（`client.h`/`request.h` 等）；协议由 include 目录层 `include/http/` 区分，避免跨协议头冲突。
+- **include 目录按协议分**：`include/http/`（HTTP 协议），未来 `include/ws/`（WebSocket）。不以 netlib/cpp_network 命名区分。
 
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - 发送 HTTP 请求并接收响应 (Priority: P1)
 
-一个 C++ 开发者使用 netlib 库发送 HTTP 请求。他们通过 `Client` 的同步 API 发送 GET/POST 请求到本地或远程服务器，直接获得 `Response`（状态码、headers、body）。请求阻塞调用线程直至完成，错误以 `Result` 返回而非崩溃。此功能在 macOS/Linux 上可用，TLS 使用 OpenSSL。
+一个 C++ 开发者使用 cpp_network 库发送 HTTP 请求。他们通过 `cpp_network::http::Client` 的同步 API 发送 GET/POST 请求到本地或远程服务器，直接获得 `cpp_network::http::Response`（状态码、headers、body）。请求阻塞调用线程直至完成，错误以 `Result` 返回而非崩溃。此功能在 macOS/Linux 上可用，TLS 使用 OpenSSL。
 
 **Why this priority**: HTTP 请求/响应是库的核心价值。没有可用的 HTTP 传输，库无实际用途。
 
@@ -123,7 +127,7 @@
 ## Assumptions
 
 - 基于 001 提案架构（同步阻塞 API、libcurl 引擎、Result 错误）与 002 工程结构（src/http 占位、third_party 契约）。
-- **类命名**：`Client`/`Request`/`Response`/`Options`/`Tls`/`Method`/`Error`/`Result`（简化优雅，公共命名空间 `netlib`，避免 Http 前缀冗余）。
+- **命名**：命名空间 `cpp_network::http`（两层）；类名 `Client`/`Request`/`Response`/`Options`/`Tls`/`Method`/`Error`/`Result`；文件名无协议前缀（`client.h` 等）；include 目录 `include/http/`（协议分目录，非 netlib）。
 - HTTP/1.1 为 v1 目标；HTTP/2 不在范围。
 - OpenSSL 为全平台 TLS 后端（host 实际构建验证；Android 交叉编译留后续）。
 - libcurl/OpenSSL 的源码 Bazel 构建（curl_config.h 方案）在实现阶段落地——**若源码构建复杂度超预期，host 平台可先用系统 libcurl/OpenSSL 链接验证功能，third_party 源码构建作为增强**。

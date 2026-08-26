@@ -1,15 +1,32 @@
-# Public API surface of the netlib library.
+# Public API surface of the cpp_network library (HTTP protocol).
 package(default_visibility = ["//visibility:public"])
+
+# Header-only public API types for the HTTP protocol. Both the aggregate target
+# and the src/http implementation depend on this to share the `http/` include
+# prefix without circular dependencies.
+cc_library(
+    name = "public_headers",
+    hdrs = [
+        "include/http/http_umbrella.h",
+        "include/http/export.h",
+        "include/http/error.h",
+        "include/http/result.h",
+        "include/http/method.h",
+        "include/http/tls.h",
+        "include/http/request.h",
+        "include/http/response.h",
+        "include/http/options.h",
+        "include/http/client.h",
+    ],
+    includes = ["include"],
+    visibility = ["//visibility:public"],
+)
 
 cc_library(
     name = "netlib",
-    hdrs = [
-        "include/netlib/netlib.h",
-        "include/netlib/netlib_export.h",
-    ],
-    includes = ["include"],
     deps = [
-        "@cpp_network//src/http:http",
+        ":public_headers",
+        "@cpp_network//src/http:client",
         "@cpp_network//src/websocket:websocket",
     ],
     visibility = ["//visibility:public"],
@@ -20,7 +37,7 @@ cc_binary(
     srcs = [],
     linkshared = True,
     linkstatic = True,
-    defines = ["NETLIB_SHARED_LIBRARY"],
+    defines = ["CPP_NETWORK_HTTP_SHARED_LIBRARY"],
     deps = [":netlib"],
     visibility = ["//visibility:public"],
 )

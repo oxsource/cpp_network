@@ -2,28 +2,37 @@
 
 **Branch**: `003-http-implementation` | **Date**: 2026-08-26 | **Spec**: [spec.md](../spec.md)
 
-公共 API 位于 `netlib` 命名空间，经 `src/public/include/netlib/` 头暴露。同步阻塞，`Result<T>` 错误返回，不暴露 libcurl 类型。
+公共 API 位于 `cpp_network::http` 命名空间（两层），经 `src/public/include/http/` 头暴露。同步阻塞，`Result<T>` 错误返回，不暴露 libcurl 类型。
 
-## 类命名（简化优雅）
+## 命名规范
 
-`Client` / `Request` / `Response` / `Options` / `Tls` / `Method` / `Error` / `Result`。
+- **命名空间**: `cpp_network::http`（根 `cpp_network` + 协议 `http`；未来 `cpp_network::ws`）。
+- **类名**: `Client` / `Request` / `Response` / `Options` / `Tls` / `Method` / `Error` / `Result`。
+- **文件名**: 无协议前缀（`client.h` 等）；协议由 include 目录层 `include/http/` 区分，避免跨协议头冲突。
+- **include 目录**: `include/http/`（按协议分目录，不以 netlib 命名）。
 
 ## 头文件布局
 
 ```text
-src/public/include/netlib/
-├── netlib.h            # umbrella：include 下列全部
-├── client.h            # Client
-├── request.h           # Request / Method
-├── response.h          # Response / Stream
-├── options.h           # Options / Proxy
-├── tls.h               # Tls / VerifyMode
-├── error.h             # Error / ErrorCode
-├── result.h            # Result<T>
-└── netlib_export.h     # NETLIB_API
+src/public/include/http/
+├── http_umbrella.h   # umbrella：include 下列全部
+├── client.h          # Client
+├── request.h         # Request / Method
+├── response.h        # Response / Stream
+├── options.h         # Options / Proxy
+├── tls.h             # Tls / VerifyMode
+├── error.h           # Error / ErrorCode
+├── result.h          # Result<T>
+└── export.h          # CPP_NETWORK_HTTP_API 导出宏
 ```
 
+**注**: 公共导出宏命名 `CPP_NETWORK_HTTP_API`（对齐 `cpp_network::http` 命名空间）。
+
 ## 核心类型
+
+所有类型在 `namespace cpp_network::http { ... }` 内定义（下文省略命名空间包裹）。
+
+### Error / ErrorCode
 
 ### Error / ErrorCode
 
