@@ -70,7 +70,27 @@ TEST_F(ConfigTest, ReadTimeoutOnSlowServer) {
   auto client = Client::Create(opts);
   ASSERT_TRUE(client.ok()) << client.error().message();
 
+  // The idle read limit (1s via low-speed detection) fires before the 4s
+  // total timeout; the engine labels this kReadTimeout by elapsed time.
   Result<Response> res = client->Get(kBase + "/slow");
+  ASSERT_FALSE(res.ok());
+  EXPECT_EQ(ErrorCode::kReadTimeout, res.error().code());
+}
+
+TEST_F(ConfigTest, RequestLevelTimeoutOverridesClientOptions) {
+  Options opts;
+  opts.SetConnectTimeout(std::chrono::seconds(2))
+      .SetReadTimeout(std::chrono::seconds(30));
+  auto client = Client::Create(opts);
+  ASSERT_TRUE(client.ok()) << client.error().message();
+
+  // Request-level timeout wins over the client read_timeout (30s).
+  auto req = Request::Builder()
+                 .Url(kBase + "/slow")
+                 .Timeout(std::chrono::milliseconds(500))
+                 .Build();
+  ASSERT_TRUE(req.ok()) << req.error().message();
+  Result<Response> res = client->Send(*req);
   ASSERT_FALSE(res.ok());
   EXPECT_EQ(ErrorCode::kTotalTimeout, res.error().code());
 }

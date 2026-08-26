@@ -2,6 +2,8 @@
 
 **Branch**: `001-cpp-network-library` | **Date**: 2026-08-26（修订：2026-08-26 全平台 OpenSSL）
 
+> **状态（2026-08-26，spec 003 实现核对）**：决策方向（全平台 OpenSSL 经 libcurl、不暴露后端类型）已实现，但落地形态与本文布局不同——见下方"实际落地"节。
+
 **对应需求**: FR-003（平台无关 TLS 抽象）、FR-016（不暴露后端细节）、FR-014（多平台构建）
 
 **相关设计**: [bazel-platforms.md](bazel-platforms.md)、[tls-config.md](tls-config.md)、[host-openssl-build.md](host-openssl-build.md)
@@ -17,12 +19,31 @@ TLS 由 libcurl 的 SSL 后端承担，**统一使用 OpenSSL 3.x LTS**（host m
 - research.md Decision 4（修订）：libcurl 已抽象多种 SSL 后端，复用其抽象可避免维护自定义 TLS 适配器；全平台统一 OpenSSL 免除构建时后端 select。
 - 自研 `TlsAdapter` 接口（手写 OpenSSL/BoringSSL 双后端）被否决：重复造轮子、接口维护成本高、易引入证书处理 bug。
 
-## src/tls/ 布局
+## 实际落地（spec 003）
+
+与本文原布局的差异：
+
+```text
+src/tls/
+├── BUILD.bazel          # cc_library "tls"：仅依赖公共头（Error/Result header-only）
+└── tls.cc               # Tls::Validate() 校验（CA 互斥/mTLS 成对/SNI/PEM 形态）
+src/http/detail/
+├── curl_mapping.cc      # Tls → CURLOPT_SSL_* 映射（逐请求由引擎应用），
+                         # 含 blob → 临时文件回退（MaterializePem）
+src/public/include/http/
+└── tls.h                # 公共类型：cpp_network::http::Tls / VerifyMode
+```
+
+- 无 `internal/ssl_backend.*`：映射直接内联在 HTTP 引擎的 curl_mapping 层（逐请求应用，且依赖 MaterializePem 等传输期辅助）。
+- libcurl 以**系统库**形式经 `linkopts = ["-lcurl"]` 链接；`@openssl//:openssl`、`@libcurl//:libcurl_openssl` 尚为占位（见 host-openssl-build.md 状态横幅）。OpenSSL 不作为独立 Bazel 依赖出现。
+- 验证矩阵中 macOS arm64 已实测通过（https_test）；Linux/Android 构建配置就绪待验证。
+
+## src/tls/ 布局（001 原设计，未采用）
 
 ```text
 src/tls/
 ├── BUILD.bazel          # 链接 libcurl（OpenSSL 后端），无平台 select
-├── tls_config.h         # 公共 TlsConfig 类型（→ CURLOPT_SSL_* 映射见 tls-config.md）
+├── tls_config.h         # 公共 TlsConfig 类型
 ├── tls_config.cc
 └── internal/
     ├── ssl_backend.h    # 内部辅助：将 TlsConfig 应用到 CURLOPT（OpenSSL 后端）
@@ -51,17 +72,17 @@ cc_library(
 - `@libcurl//:libcurl_openssl` — libcurl 以 `--with-openssl` 编译（见 host-openssl-build.md），host 与 Android 平台相同。
 - 单一 `curl/curl.h` 公共头，API 对上层一致，天然满足 FR-016。
 
-### 2. TlsConfig → CURLOPT 映射（后端无关）
+### 2. Tls → CURLOPT 映射（后端无关）
 
-`ssl_backend.cc` 只调用 libcurl 的稳定 C API，不直接触碰 OpenSSL 符号：
+`curl_mapping.cc` 只调用 libcurl 的稳定 C API，不直接触碰 OpenSSL 符号（完整表见 tls-config.md）：
 
-| TlsConfig 字段 | libcurl 选项 |
+| Tls 字段 | libcurl 选项 |
 |----------------|--------------|
 | `verify_mode == kVerifyPeer` | `CURLOPT_SSL_VERIFYPEER=1`, `CURLOPT_SSL_VERIFYHOST=2` |
 | `verify_mode == kSkipVerification` | `CURLOPT_SSL_VERIFYPEER=0`, `CURLOPT_SSL_VERIFYHOST=0` |
-| `ca_certificates`（内存 PEM） | `CURLOPT_CAINFO`（临时文件）或 `CURLOPT_CAINFO_BLOB`（curl ≥7.77 支持内存 blob） |
-| `client_certificate` + key | `CURLOPT_SSLCERT`, `CURLOPT_SSLKEY` |
-| `sni_hostname` | `CURLOPT_SSL_OPTIONS` / `CURLOPT_SNI_HOSTNAME`（按 curl 版本选择） |
+| `ca_file` / `ca_certificate`（内存 PEM） | `CURLOPT_CAINFO` / `CURLOPT_CAINFO_BLOB`（运行时 ≥7.77，失败回退临时文件） |
+| `client_cert` + `client_key`（PEM 或路径） | `CURLOPT_SSLCERT(_BLOB)`, `CURLOPT_SSLKEY(_BLOB)`（运行时 blob ≥7.71，回退临时文件） |
+| `sni` | `CURLOPT_SNI_HOSTNAME`（编译期 #ifdef 保护） |
 
 ### 3. 平台差异的隔离点
 

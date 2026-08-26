@@ -1,23 +1,23 @@
 # TLS Certificate Validation Flow Design
 
-**Branch**: `001-cpp-network-library` | **Date**: 2026-08-26
+**Branch**: `003-http-implementation` | **Date**: 2026-08-26（已实现，自 001 设计稿同步）
 
-**对应需求**: FR-019（自定义证书校验：跳过校验/自定义 CA）、SC-008（TLS 失败优雅处理）
+**对应需求**: FR-019/FR-008（自定义证书校验）、SC-003/SC-005（TLS 失败优雅处理、HTTPS 验证）
 
-**用户故事**: US2 (P1) — Platform-Specific TLS Adapter
+**实现位置**: `src/public/include/http/tls.h`、`src/tls/tls.cc`（校验）、`src/http/detail/curl_mapping.cc`（映射）、`src/tests/https_test.cc`
 
 **相关设计**: [tls-config.md](tls-config.md)、[core-error.md](core-error.md)、[http-transfer-lifecycle.md](http-transfer-lifecycle.md)
 
 ## Overview
 
-定义证书校验的完整流程：从 `TlsConfig` 配置到 libcurl 执行握手、校验失败时的错误映射。校验完全委托 libcurl（OpenSSL 后端），库负责选项映射与错误语义化。
+定义证书校验的完整流程：从 `Tls` 配置到 libcurl 执行握手、校验失败时的错误映射。配置合法性由 `Tls::Validate()` 前置拒绝；证书链/主机名校验完全委托 libcurl（经其 TLS 后端），库负责选项映射与错误语义化。
 
 ## 校验模式
 
 ### 模式 A：kVerifyPeer（默认，安全）
 
 ```text
-用户配置 TlsConfig{verify_mode=kVerifyPeer}
+用户配置 Tls{verify_mode=kVerifyPeer}
   → 映射 CURLOPT_SSL_VERIFYPEER=1, CURLOPT_SSL_VERIFYHOST=2
   → libcurl 执行握手：
       1) 校验证书链（信任锚 = 系统信任库 或 用户 CA bundle）
@@ -31,7 +31,7 @@
 ### 模式 B：kSkipVerification（测试/自签）
 
 ```text
-用户配置 TlsConfig{verify_mode=kSkipVerification}
+用户配置 Tls{verify_mode=kSkipVerification}
   → 映射 CURLOPT_SSL_VERIFYPEER=0, CURLOPT_SSL_VERIFYHOST=0
   → libcurl 不校验证书链、不校验主机名（仅完成加密握手）
   → 仅限测试环境；文档明确安全警告
@@ -40,7 +40,7 @@
 ### 模式 C：自定义 CA（内部 CA/私有 PKI）
 
 ```text
-用户配置 TlsConfig{ca_certificates=[PEM...]}
+用户配置 Tls.SetCaFile(path) 或 SetCaCertificate(pem)
   → 拼接 PEM bundle → CURLOPT_CAINFO（或 CAINFO_BLOB）
   → verify_mode 仍为 kVerifyPeer（默认）
   → 信任锚 = 用户 CA bundle（替代系统信任库，而非追加）
@@ -74,13 +74,19 @@
   - 否则 `Send` 返回 `Result<Error(kCertificateVerificationFailed)>`。
 - **重试安全**：证书校验失败默认**不重试**（避免对不可信证书的重复握手；由 `retry_condition` 显式开启）。
 
-## 测试/验收场景对照（spec US2 场景 3）
+## 测试/验收场景对照（spec US2，src/tests/https_test.cc 全部通过）
 
-| 场景 | 配置 | 期望 |
-|------|------|------|
-| 自签证书 + 未配置 skip | 默认 `kVerifyPeer` | `kCertificateVerificationFailed` 拒绝 |
-| 自签证书 + 配置 skip | `SetVerifyMode(kSkipVerification)` | 握手成功，传输继续 |
-| 自签证书 + 自定义 CA | `AddCaCertificate(自签PEM)` | 握手成功（信任锚 = 该 CA） |
+| 场景 | 配置 | 期望 | 用例 |
+|------|------|------|------|
+| 自签证书 + 默认配置 | `kVerifyPeer` | `kCertificateVerificationFailed` 拒绝 | `SelfSignedRejectedByDefault` |
+| 自签证书 + skip | `SetVerifyMode(kSkipVerification)` | 握手成功 | `SelfSignedAcceptedWhenSkipVerification` |
+| 自签证书 + CA 文件注入 | `SetCaFile(...)` | 信任锚 = 该 CA，200 | `SelfSignedAcceptedWhenCaFileInjected` |
+| 自签证书 + 内存 CA PEM 注入 | `SetCaCertificate(pem)` | 同上 | `SelfSignedAcceptedWhenCaPemInjected` |
+| mTLS（文件路径） | `SetClientCertificate(path, path)` | 200 | `ClientCertificateRequiredForMtls` |
+| mTLS（内存 PEM） | blob → 临时文件回退 | 200 | `MtlsAcceptedWithInMemoryPem` |
+| 非法配置 | 非法 PEM / CA 冲突 / SNI CRLF / 形态混用 | `kInvalidArgument` 前置拒绝 | `TlsValidationTest.*` |
+
+补充说明：自签服务器证书本身也可直接作为 CA 注入（OpenSSL 视为信任锚）；测试采用其签发自签 CA 的更规范路径。
 
 ## 边界与约束
 

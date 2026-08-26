@@ -2,6 +2,8 @@
 
 #include <curl/curl.h>
 
+#include <chrono>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -44,7 +46,7 @@ size_t HeaderCallback(char* buffer, size_t size, size_t nitems, void* userdata) 
 }
 
 Error MapCurlError(CURLcode rc, const std::string& strerror,
-                   bool has_total_timeout) {
+                   ErrorCode timed_out_code) {
   switch (rc) {
     case CURLE_COULDNT_RESOLVE_HOST:
     case CURLE_COULDNT_RESOLVE_PROXY:
@@ -52,12 +54,9 @@ Error MapCurlError(CURLcode rc, const std::string& strerror,
     case CURLE_COULDNT_CONNECT:
       return Error(ErrorCode::kConnectionRefused, strerror);
     case CURLE_OPERATION_TIMEDOUT:
-      // libcurl reports the same code for connect/total timeouts. When no total
-      // timeout is configured, a timeout must come from the connect phase.
-      if (!has_total_timeout) {
-        return Error(ErrorCode::kConnectionTimeout, strerror);
-      }
-      return Error(ErrorCode::kTotalTimeout, strerror);
+      // libcurl reports the same code for connect/read/hard timeouts; the
+      // caller disambiguates via elapsed time vs the configured limits.
+      return Error(timed_out_code, strerror);
     case CURLE_SSL_CONNECT_ERROR:
       return Error(ErrorCode::kTlsHandshakeFailed, strerror);
     case CURLE_PEER_FAILED_VERIFICATION:
@@ -99,6 +98,32 @@ Result<Response> Engine::Send(const Request& req) {
 }
 
 Result<Response> Engine::PerformSingle(const Request& req) {
+  // Disambiguate CURLE_OPERATION_TIMEDOUT later: libcurl does not tell which
+  // limit fired, so compare elapsed time against the configured limits (with a
+  // small scheduling slack).
+  const auto started_at = std::chrono::steady_clock::now();
+  constexpr std::int64_t kTimeoutSlackMs = 100;
+  auto ResolveTimedOutCode = [&]() {
+    const std::int64_t elapsed_ms =
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - started_at)
+            .count();
+    std::chrono::milliseconds hard_timeout{0};
+    if (detail::EffectiveHardTimeout(req, options_, &hard_timeout) !=
+            ErrorCode::kNone &&
+        elapsed_ms + kTimeoutSlackMs >= hard_timeout.count()) {
+      return detail::EffectiveHardTimeout(req, options_, &hard_timeout);
+    }
+    if (options_.read_timeout().count() > 0) {
+      const std::int64_t low_speed_ms =
+          ((options_.read_timeout().count() + 999) / 1000) * 1000;
+      if (elapsed_ms + kTimeoutSlackMs >= low_speed_ms) {
+        return ErrorCode::kReadTimeout;
+      }
+    }
+    return ErrorCode::kConnectionTimeout;
+  };
+
   CURL* easy = curl_easy_init();
   if (!easy) {
     return Result<Response>::Err(
@@ -144,6 +169,7 @@ Result<Response> Engine::PerformSingle(const Request& req) {
 
   CURLcode rc = CURLE_OK;
   bool done = false;
+  ErrorCode timed_out_code = ErrorCode::kNone;
   CURLMsg* msg;
   int msgs_left = 0;
   while ((msg = curl_multi_info_read(multi_, &msgs_left)) != nullptr) {
@@ -158,14 +184,24 @@ Result<Response> Engine::PerformSingle(const Request& req) {
 
   if (!done || rc != CURLE_OK) {
     const char* strerr = done ? curl_easy_strerror(rc) : "transfer interrupted";
+    if (rc == CURLE_OPERATION_TIMEDOUT) {
+      timed_out_code = ResolveTimedOutCode();
+    }
     if (header_list) curl_slist_free_all(header_list);
     curl_easy_cleanup(easy);
-    return Result<Response>::Err(
-        MapCurlError(rc, strerr, options_.total_timeout().count() > 0));
+    return Result<Response>::Err(MapCurlError(rc, strerr, timed_out_code));
   }
 
   long status_code = 0;
   curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &status_code);
+  if (status_code == 0) {
+    // A completed transfer without a status line is not a usable HTTP
+    // response (e.g. non-HTTP protocol reply).
+    if (header_list) curl_slist_free_all(header_list);
+    curl_easy_cleanup(easy);
+    return Result<Response>::Err(
+        Error(ErrorCode::kProtocolError, "missing HTTP status line"));
+  }
   char* effective_url = nullptr;
   curl_easy_getinfo(easy, CURLINFO_EFFECTIVE_URL, &effective_url);
 

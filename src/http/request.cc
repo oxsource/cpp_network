@@ -17,6 +17,20 @@ bool LooksLikeAbsoluteUrl(const std::string& url) {
   return url.rfind("http://", 0) == 0 || url.rfind("https://", 0) == 0;
 }
 
+bool HeaderNameEquals(const std::string& a, const char* b_lower) {
+  if (a.size() != std::strlen(b_lower)) return false;
+  for (std::size_t i = 0; i < a.size(); ++i) {
+    if (std::tolower(static_cast<unsigned char>(a[i])) != b_lower[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool IsContentType(const std::string& name) {
+  return HeaderNameEquals(name, "content-type");
+}
+
 }  // namespace
 
 std::optional<std::string> Request::GetHeader(const std::string& name) const {
@@ -43,7 +57,7 @@ Request::Builder& Request::Builder::Body(const std::string& body) {
   bool has_ct = false;
   for (const auto& [name, value] : headers_) {
     (void)value;
-    if (name == "Content-Type" || name == "content-type") {
+    if (IsContentType(name)) {
       has_ct = true;
       break;
     }
@@ -59,7 +73,7 @@ Request::Builder& Request::Builder::JsonBody(const std::string& json) {
   has_body_ = true;
   // Set or override Content-Type: application/json.
   for (auto& [name, value] : headers_) {
-    if (name == "Content-Type" || name == "content-type") {
+    if (IsContentType(name)) {
       value = "application/json";
       return *this;
     }

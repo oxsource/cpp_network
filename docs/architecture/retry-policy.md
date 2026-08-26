@@ -1,4 +1,6 @@
-# Retry Policy Design
+# Retry Policy Design（上层实现；v1 库内未交付 RetryPolicy 类型）
+
+> **状态（2026-08-26，spec 003 实现核对）**：库内不自动重试，且 `Options` 未提供 RetryPolicy 字段。本文保留为上层实现参考模式；符号名以实际 `cpp_network::http` 命名体系为准。
 
 **Branch**: `001-cpp-network-library` | **Date**: 2026-08-26
 

@@ -1,6 +1,7 @@
 # HTTP implementation for the cpp_network library (synchronous API over libcurl).
 # Public type definitions live in //src/public:public_headers; this package
-# provides the implementation translation units.
+# provides the implementation translation units. TLS validation lives in
+# //src/tls:tls; CURLOPT_SSL_* mapping is applied here per-request.
 package(default_visibility = [
     "@cpp_network//src/public:__pkg__",
     "@cpp_network//src/tests:__pkg__",
@@ -24,15 +25,6 @@ cc_library(
 cc_library(
     name = "method",
     deps = [PUBLIC_HEADERS],
-)
-
-cc_library(
-    name = "tls",
-    srcs = ["tls.cc"],
-    deps = [
-        PUBLIC_HEADERS,
-        ":error",
-    ],
 )
 
 cc_library(
@@ -63,7 +55,7 @@ cc_library(
         PUBLIC_HEADERS,
         ":error",
         ":result",
-        ":tls",
+        "//src/tls:tls",
     ],
 )
 
@@ -79,7 +71,7 @@ cc_library(
         ":request",
         ":response",
         ":result",
-        ":tls",
+        "//src/tls:tls",
     ],
     linkopts = ["-lcurl"],
 )
@@ -96,7 +88,7 @@ cc_library(
         ":request",
         ":response",
         ":result",
-        ":tls",
+        "//src/tls:tls",
     ],
     linkopts = ["-lcurl"],
 )

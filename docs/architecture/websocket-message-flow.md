@@ -1,5 +1,7 @@
 # WebSocket Message Flow & Reconnect Design（同步）
 
+> **状态（2026-08-26，spec 003 实现核对）**：v2 草案，未实现（`src/websocket/` 仅占位）。命名体系已迁移至 `cpp_network`，实现时需重新起草。
+
 **Branch**: `001-cpp-network-library` | **Date**: 2026-08-26（同步重构版）
 
 **对应需求**: FR-017（message send/receive/close）

@@ -1,8 +1,8 @@
 # Architecture Documentation
 
-**Feature Branch**: `001-cpp-network-library`
+**Feature Branch**: `001-cpp-network-library`（设计）→ `003-http-implementation`（实现）
 
-本文档目录承载 C++ 跨平台网络库的**架构设计文档**。本阶段仅产出设计文档，不包含代码实现。
+本文档目录承载 C++ 跨平台网络库的**架构设计文档**。HTTP/TLS 部分（spec 003）已实现并同步至实际命名体系（`cpp_network::http`：`Client`/`Request`/`Response`/`Options`/`Tls`）；各文档头部状态横幅标明与实现的对应关系。v2 范围（WebSocket、协议中立抽象、重试策略类型）保留草案并加注。
 
 ## 目录结构
 
@@ -10,28 +10,28 @@
 docs/architecture/
 ├── README.md                  # 本文档：规范与导航
 ├── adr/                       # Architecture Decision Records
-│   └── adr-XXX-title.md       # 编号 ADR 文档
-├── bazel-platforms.md         # Bazel 工作区与平台定义设计
-├── core-error.md              # 错误码体系设计
-├── sync-engine.md             # 同步传输引擎设计（共享 CURLM + curl_multi_poll，连接池复用）
-├── tls-backend-selection.md   # 构建时 TLS 后端选型设计
-├── http-client-api.md         # HttpClient 同步 axios 风格 API 设计
-├── http-request.md            # HttpRequest 值类型设计
-├── http-response.md           # HttpResponse 值类型设计
-├── http-transfer-lifecycle.md # HTTP 传输生命周期设计（同步）
-├── http-config-mapping.md     # NetworkConfig → libcurl 映射设计
-├── tls-config.md              # TlsConfig 类型设计
-├── tls-cert-validation.md     # 证书校验流程设计
+│   └── adr-XXX-title.md       # 编号 ADR 文档（历史决策记录）
+├── bazel-platforms.md         # Bazel 工作区与平台定义（已落地，差异见文首横幅）
+├── core-error.md              # 错误码体系（已实现：ErrorCode/Error/Result + MapCurlError）
+├── sync-engine.md             # 同步传输引擎（已实现：Engine = 共享 CURLM + curl_multi_poll）
+├── tls-backend-selection.md   # TLS 后端选型（全平台 OpenSSL 经 libcurl；布局差异见横幅）
+├── http-client-api.md         # Client 同步 API（已实现）
+├── http-request.md            # Request 值类型（已实现）
+├── http-response.md           # Response 值类型（已实现；流式 deferred）
+├── http-transfer-lifecycle.md # HTTP 传输生命周期（已实现）
+├── http-config-mapping.md     # Options/Request → libcurl 映射（已实现）
+├── tls-config.md              # Tls 类型设计（已实现：内存 PEM/文件路径/mTLS/SNI/校验）
+├── tls-cert-validation.md     # 证书校验流程（已实现，含测试对照表）
 ├── android-boringssl-build.md # （⚠️废弃，历史）Android BoringSSL 构建集成 — 已改全平台 OpenSSL
-├── host-openssl-build.md      # host OpenSSL 构建集成
-├── network-config.md          # NetworkConfig 实体设计
-├── retry-policy.md            # 重试策略设计（上层实现）
-├── proxy-config.md            # 代理配置设计
-├── connection-pool.md         # 连接池调优设计
-├── websocket-api.md           # WebSocket API 设计（同步）
-├── protocol-extension.md      # 协议扩展机制设计
-├── websocket-message-flow.md  # WebSocket 消息流设计
-└── requirement-traceability.md # 需求追踪矩阵
+├── host-openssl-build.md      # host OpenSSL 构建（源码构建为后续任务；当前系统 -lcurl）
+├── network-config.md          # Options 配置实体（已实现；取代 NetworkConfig 设计稿）
+├── retry-policy.md            # 重试策略（上层实现参考；库内无 RetryPolicy 类型）
+├── proxy-config.md            # 代理配置（已实现：HTTP 代理）
+├── connection-pool.md         # 连接池调优（已实现：委托 libcurl）
+├── websocket-api.md           # WebSocket API 设计（v2 草案，未实现）
+├── protocol-extension.md      # 协议扩展机制（v2 方向，TransferOptions 未实现）
+├── websocket-message-flow.md  # WebSocket 消息流设计（v2 草案，未实现）
+└── requirement-traceability.md # 需求追踪矩阵（含 spec 003 实现状态说明）
 ```
 
 > **已移除**：`core-executor.md` / `core-promise.md` / `curl-engine-bridge.md`（异步抽象，2026-08-26 同步 API 重构后合并为 `sync-engine.md`）。

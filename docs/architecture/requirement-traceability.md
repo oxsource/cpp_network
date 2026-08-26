@@ -4,6 +4,12 @@
 
 核对 spec.md 的 FR-001..FR-021 与 SC-001..SC-008 在设计文档中的覆盖情况。
 
+> **状态说明（2026-08-26，spec 003 实现核对）**：下表 ✅ 表示**设计覆盖**，不等于已实现。实现状态（spec 003，macOS arm64 实测）：
+> - **已实现并验证**：FR-001..FR-006、FR-008、FR-010..FR-016、FR-019、FR-020（命名体系为 `cpp_network::http`：Client/Request/Response/Options/Tls）
+> - **部分/未实现**：FR-007 流式响应（API 预留、引擎未接线）；FR-009 重试策略（库内无 RetryPolicy 类型，上层模式见 retry-policy.md）
+> - **未涉及**：FR-017/FR-018 WebSocket（v2，src/websocket 占位）；FR-021 协议中立抽象（v2 方向）
+> - **构建现实**：当前链接系统 libcurl（`-lcurl`），源码构建 OpenSSL/libcurl 未落地（host-openssl-build.md 状态横幅）
+
 ## 功能需求 → 设计文档
 
 | FR | 需求 | 设计文档覆盖 | 状态 |

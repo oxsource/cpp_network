@@ -3,6 +3,8 @@
 #include <csignal>
 #include <cstdio>
 #include <cstdlib>
+#include <fstream>
+#include <sstream>
 #include <string>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -24,6 +26,15 @@ Options MakeOptions() {
   opts.SetConnectTimeout(std::chrono::seconds(5))
       .SetReadTimeout(std::chrono::seconds(5));
   return opts;
+}
+
+bool ReadFile(const std::string& path, std::string* out) {
+  std::ifstream file(path, std::ios::binary);
+  if (!file.is_open()) return false;
+  std::ostringstream buffer;
+  buffer << file.rdbuf();
+  *out = buffer.str();
+  return true;
 }
 
 pid_t StartServer(const std::string& script, int port,
@@ -114,6 +125,20 @@ TEST_F(HttpsTest, SelfSignedAcceptedWhenCaFileInjected) {
   EXPECT_EQ(200, res->status());
 }
 
+TEST_F(HttpsTest, SelfSignedAcceptedWhenCaPemInjected) {
+  std::string ca_pem;
+  ASSERT_TRUE(ReadFile("src/tests/certs/ca_cert.pem", &ca_pem));
+  Options opts = MakeOptions();
+  Tls tls;
+  tls.SetCaCertificate(ca_pem);
+  opts.SetTls(tls);
+  auto client = Client::Create(opts);
+  ASSERT_TRUE(client.ok()) << client.error().message();
+  Result<Response> res = client->Get(kTlsBase + "/");
+  ASSERT_TRUE(res.ok()) << res.error().message();
+  EXPECT_EQ(200, res->status());
+}
+
 TEST_F(HttpsTest, ClientCertificateRequiredForMtls) {
   Options opts = MakeOptions();
   Tls tls;
@@ -128,5 +153,69 @@ TEST_F(HttpsTest, ClientCertificateRequiredForMtls) {
   EXPECT_EQ(200, res->status());
 }
 
+TEST_F(HttpsTest, MtlsAcceptedWithInMemoryPem) {
+  std::string cert_pem;
+  std::string key_pem;
+  ASSERT_TRUE(ReadFile("src/tests/certs/client_cert.pem", &cert_pem));
+  ASSERT_TRUE(ReadFile("src/tests/certs/client_key.pem", &key_pem));
+  Options opts = MakeOptions();
+  Tls tls;
+  tls.SetVerifyMode(VerifyMode::kSkipVerification);
+  tls.SetClientCertificate(cert_pem, key_pem);
+  opts.SetTls(tls);
+  auto client = Client::Create(opts);
+  ASSERT_TRUE(client.ok()) << client.error().message();
+  Result<Response> res = client->Get("https://127.0.0.1:18444/");
+  ASSERT_TRUE(res.ok()) << res.error().message();
+  EXPECT_EQ(200, res->status());
+}
+
+// Validation tests exercise Tls::Validate() via Client::Create; no server
+// interaction is needed since invalid configurations are rejected up front.
+
+TEST(TlsValidationTest, InvalidInlineCaPemRejected) {
+  Options opts;
+  Tls tls;
+  tls.SetCaCertificate("this is not a pem");
+  opts.SetTls(tls);
+  auto client = Client::Create(opts);
+  ASSERT_FALSE(client.ok());
+  EXPECT_EQ(ErrorCode::kInvalidArgument, client.error().code());
+}
+
+TEST(TlsValidationTest, ConflictingCaSourcesRejected) {
+  Options opts;
+  Tls tls;
+  tls.SetCaFile("src/tests/certs/ca_cert.pem");
+  tls.SetCaCertificate("-----BEGIN CERTIFICATE-----\n-----END CERTIFICATE-----");
+  opts.SetTls(tls);
+  auto client = Client::Create(opts);
+  ASSERT_FALSE(client.ok());
+  EXPECT_EQ(ErrorCode::kInvalidArgument, client.error().code());
+}
+
+TEST(TlsValidationTest, SniWithCrlfRejected) {
+  Options opts;
+  Tls tls;
+  tls.SetSni("example.com\r\nX-Injected: 1");
+  opts.SetTls(tls);
+  auto client = Client::Create(opts);
+  ASSERT_FALSE(client.ok());
+  EXPECT_EQ(ErrorCode::kInvalidArgument, client.error().code());
+}
+
+TEST(TlsValidationTest, MixedPemAndPathClientMaterialRejected) {
+  Options opts;
+  Tls tls;
+  tls.SetClientCertificate(
+      "src/tests/certs/client_cert.pem",
+      "-----BEGIN PRIVATE KEY-----\n-----END PRIVATE KEY-----");
+  opts.SetTls(tls);
+  auto client = Client::Create(opts);
+  ASSERT_FALSE(client.ok());
+  EXPECT_EQ(ErrorCode::kInvalidArgument, client.error().code());
+}
+
 }  // namespace http
+
 }  // namespace cpp_network

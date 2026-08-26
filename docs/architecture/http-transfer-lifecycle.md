@@ -1,107 +1,66 @@
-# HTTP Transfer Lifecycle Design（同步）
+# HTTP 传输生命周期（已实现）
 
-**Branch**: `001-cpp-network-library` | **Date**: 2026-08-26（同步重构版）
+**Branch**: `003-http-implementation` | **Date**: 2026-08-26
 
-**对应需求**: FR-001（请求/响应）、FR-008（重定向）、FR-009（重试，上层实现）
+**对应需求**: FR-002（同步阻塞）、FR-005（错误映射）、SC-004（连接复用）
 
-**用户故事**: US1 (P1) — Send HTTP Request and Receive Response
-
-**相关设计**: [sync-engine.md](sync-engine.md)、[http-client-api.md](http-client-api.md)、[http-response.md](http-response.md)
+**实现位置**: `src/http/engine.cc`（PerformSingle）、`src/http/detail/curl_mapping.cc`、[sync-engine.md](sync-engine.md)、[core-error.md](core-error.md)
 
 ## Overview
 
-描述一次 HTTP 传输从 `HttpClient::Send` 到返回 `Result<HttpResponse>` 的完整同步生命周期，以及重定向、超时、并发在其中的流转。**无 Promise、无重试（库内单次传输）**。
+一次 `Client::Send(Request)` 的完整生命周期。全部步骤同步阻塞调用线程，单次传输内无重试。
 
-## 状态机（单次传输）
+## 状态机
 
 ```text
-Send(req)
- → 校验(HttpRequest) → Result<Error> | 
- → 加锁进共享 CURLM（sync-engine.md）
- → curl_multi_poll 阻塞驱动直到本 easy CURLMSG_DONE
- → 缓冲模式: 提取完整响应 → 返回 Result<HttpResponse>
- → 流式模式: 头读完返回 → 返回 Result<HttpResponse>(带 body_stream)
- → 失败: CURLcode → ErrorCode → 返回 Result<Error>
+Client::Send(req)
+  └─ Engine::Send → 加锁
+       1. closed_ / multi_ 检查        → kInvalidState
+       2. curl_easy_init               → kOutOfMemory
+       3. 挂接 Write/Header 回调（内存缓冲）
+       4. ApplyEasyOptions             ← Request + Options 全量映射（下表）
+          失败                          → kInvalidArgument / kOutOfMemory
+       5. curl_multi_add_handle        → kInternalError
+       6. 循环 poll(1000ms)+perform，记录 started_at
+       7. info_read 取本 easy 的 DONE result
+       8. remove_handle
+       ├─ 失败：MapCurlError(result, strerror, 超时细分)   ← core-error.md
+       └─ 成功：
+            status == 0                → kProtocolError("missing HTTP status line")
+            构造 Response（全量缓冲）→ Ok
+       9. slist_free_all + easy_cleanup + 解锁
 ```
 
-## 各阶段详细设计
+## 选项应用时机
 
-### 1. 校验
+- **easy 级**：每次 `Send` 新建 easy 时由 `ApplyEasyOptions` 应用。
+- **multi 级**：Engine 构造时 `ApplyMultiOptions` 应用一次（`CURLMOPT_MAX_HOST_CONNECTIONS`）。
 
-`HttpClient::Send(HttpRequest)` 被调用：
+## 超时映射表
 
-- 校验 HttpRequest（http-request.md 校验规则）。失败 → 立即返回 `Result<Error(kInvalidArgument)>`，不进入引擎。
-- 校验通过 → 调用 `SyncEngine::Send(req)`。
+| 配置 | libcurl 选项 | 触发错误码 |
+|------|--------------|-----------|
+| 请求级 `Request::Timeout(ms)` | `CURLOPT_TIMEOUT_MS`（最高优先级） | `kTotalTimeout` |
+| `total_timeout` (>0) | `CURLOPT_TIMEOUT_MS` | `kTotalTimeout` |
+| `write_timeout` (>0) | `CURLOPT_TIMEOUT_MS` 兜底上限（无专用写超时选项） | `kWriteTimeout` |
+| `read_timeout` (>0) | `CURLOPT_LOW_SPEED_LIMIT=1` + `LOW_SPEED_TIME=⌈read_timeout⌉s`（空闲检测近似） | `kReadTimeout` |
+| `connect_timeout` | `CURLOPT_CONNECTTIMEOUT_MS`（覆盖 TCP+TLS 握手阶段） | `kConnectionTimeout` |
 
-### 2. 进入共享 CURLM
+同一 `CURLE_OPERATION_TIMEDOUT` 的归属由耗时比较判定（100ms 容差），见 core-error.md。
 
-- 加锁 `mu_`（sync-engine.md）。
-- 创建 CURL easy handle 并应用选项：
-  - 全局：`HttpClient::Config` 映射（http-config-mapping.md）
-  - 请求级：`HttpRequest` 字段 + timeout 覆盖
-  - TLS：`TlsConfig` → `CURLOPT_SSL_*`（tls-config.md）
-- `curl_multi_add_handle(multi_, easy)`。
-- 写回调绑定：`CURLOPT_WRITEFUNCTION`（body 收集，见 http-response.md 缓冲/流式判定）。
+## 其他映射速览
 
-### 3. 阻塞驱动
+| 配置 | libcurl 选项 |
+|------|--------------|
+| follow_redirects / max_redirects | `CURLOPT_FOLLOWLOCATION` / `MAXREDIRS`（默认 true/20） |
+| interface / local_address | `CURLOPT_INTERFACE` |
+| local_port | `CURLOPT_LOCALPORT` |
+| proxy | `CURLOPT_PROXY = "host:port"`（类型用 libcurl 默认 HTTP） |
+| keep_alive (>0) | `CURLOPT_TCP_KEEPALIVE=1` + `TCP_KEEPIDLE=⌈keep_alive⌉s` |
+| max_connections_per_host | `CURLMOPT_MAX_HOST_CONNECTIONS` |
+| TLS 全部字段 | `CURLOPT_SSL_*`，见 tls-config.md |
 
-```cpp
-int running = 0;
-do {
-  curl_multi_poll(multi_, /*extra_fds=*/nullptr, /*nfds=*/0,
-                  /*timeout_ms=*/剩余 total_timeout 或 -1, &numfds);
-  curl_multi_perform(multi_, &running);
-  // 检查 curl_multi_info_read 是否本 easy 完成（CURLMSG_DONE）
-} while (本 easy 未完成 && 未超时);
-```
+## 重试与流式
 
-- 锁内驱动所有已入列 easy（含其他线程的请求）的 IO，实现连接池复用。
-- 重定向：`CURLOPT_FOLLOWLOCATION` 开启时由 libcurl 内部跟随，直到 `CURLOPT_MAXREDIRS`（默认 20）。超限 → `CURLE_TOO_MANY_REDIRECTS` → `kTooManyRedirects`。
-
-### 4. 完成（缓冲模式）
-
-- `rc == CURLE_OK`：
-  - 读取 `CURLINFO_RESPONSE_CODE`、headers、body、`CURLINFO_EFFECTIVE_URL`；
-  - 构造 `HttpResponse` → `Result<HttpResponse>::Ok(resp)`。
-- `rc != CURLE_OK` → 映射 `Error`（core-error.md）→ `Result<Error>`。
-
-### 5. 流式分支
-
-- 当判定 body 将超阈值（http-response.md），在读完头后**返回** `Result<HttpResponse>`（挂 `BodyStream` 句柄），body 未读完；用户后续同步 `Read()`。
-- 返回前保持 easy 与读上下文存活（挂到 BodyStream impl）。
-
-### 6. 清理
-
-- `curl_multi_remove_handle(multi_, easy)` + `curl_easy_cleanup(easy)`。
-- 解锁 `mu_`。
-- 返回 Result。
-
-## 失败与重试
-
-- 库内**不重试**（单次传输）。失败 → 返回 `Result<Error>`。
-- 上层重试：调用方循环调用 `Send`，按 `RetryPolicy` 判定错误类型是否命中（retry-policy.md），重试之间自行 sleep/调度。
-- 重定向：libcurl 内部处理，不计入上层重试计数。
-
-## 超时语义（组合）
-
-| 配置 | 作用阶段 | libcurl 选项 | 超时 → ErrorCode |
-|------|----------|--------------|------------------|
-| connect_timeout | TCP/TLS 连接 | `CURLOPT_CONNECTTIMEOUT_MS` | `kConnectionTimeout` |
-| read_timeout | 读空闲 | `CURLOPT_LOW_SPEED_*` | `kReadTimeout` |
-| write_timeout | 写等待 | `CURLOPT_TIMEOUT_MS` 语义近似 | `kWriteTimeout` |
-| total_timeout | 整个传输 | `CURLOPT_TIMEOUT_MS` + `curl_multi_poll` 超时 | `kTotalTimeout` |
-
-映射细节见 http-config-mapping.md。
-
-## 并发与资源
-
-- 多线程并发 `Send`：经 `mu_` 串行化进共享 CURLM（sync-engine.md）；调用线程各自阻塞。
-- 无内部线程、无回调、无事件循环。
-- 大 body 流式下，easy/读上下文生命周期延长至 BodyStream 析构。
-
-## 评审要点
-
-1. 流式分支的返回时机（头读完）与调用方 `Read()` 的衔接是否明确？
-2. 重试由上层实现后，库内无重试的状态机是否完整？
-3. 锁内驱动所有 easy 的连接池复用是否在并发下成立（sync-engine.md 评审）？
-4. 超时映射是否覆盖连接/读/写/总四个维度且优先级正确？
+- **库内不重试**：失败直接返回；上层循环可基于 ErrorCode 决定（retry-policy.md）。证书校验失败不应重试。
+- **流式分支不存在**：Send 总是等待传输完整结束并全量缓冲（http-response.md「deferred」节）。

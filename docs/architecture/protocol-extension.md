@@ -1,5 +1,7 @@
 # Protocol Extension Mechanism（同步）
 
+> **状态（2026-08-26，spec 003 实现核对）**：TransferOptions/Perform 协议中立抽象**未随 spec 003 实现**——实际 `Engine` 与 HTTP Request/Response 强耦合。目录分层（src/http、src/tls、src/websocket 占位）部分体现该思想；抽象为 v2 演进方向。
+
 **Branch**: `001-cpp-network-library` | **Date**: 2026-08-26（同步重构版）
 
 **对应需求**: FR-021（协议无关抽象层）、FR-017（未来 WebSocket）

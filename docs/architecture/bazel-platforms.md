@@ -1,6 +1,8 @@
 # Bazel Workspace & Platform Definitions Design
 
-**Branch**: `001-cpp-network-library` | **Date**: 2026-08-26
+**Branch**: `002-engineering-structure`（落地）/ `003-http-implementation`（核对） | **Date**: 2026-08-26
+
+> **状态（2026-08-26，实现核对）**：平台机制已按本文落地并验证（macOS arm64）。与原设计的差异：workspace 名 `cpp_network`（非 `netlib`）；根 BUILD 为 `alias //:netlib -> //src/public:netlib`；公共头在 `src/public/include/http/`；导出宏 `CPP_NETWORK_HTTP_EXPORT` / `CPP_NETWORK_HTTP_SHARED_LIBRARY`（http/export.h）；`.bazelrc` 无全局 `--features=visibility=hidden`（符号隐藏经各目标 copts/属性控制）；本地覆盖文件为 `.user.bazelrc`；无 `netlib_deps.bzl`（bazel_skylib/googletest 直接置于 third_party/）；`src/core/` 不存在。
 
 **对应需求**: FR-014（Bazel 6.5 构建 macOS/Linux/Android）、FR-016（平台无关公共 API）、FR-003/FR-021（跨平台 TLS 后端选型）
 
@@ -10,31 +12,32 @@
 
 设计 Bazel 工作区布局、平台定义与构建时选择机制，使得：
 1. 一个工作区支持 macOS (x86_64/arm64)、Linux (x86_64/aarch64)、Android (arm64)；
-2. 平台相关符号隐藏与导出宏（`NETLIB_API`）机制可复用；
+2. 平台相关符号隐藏与导出宏（`CPP_NETWORK_HTTP_EXPORT`）机制可复用；
 3. TLS 后端统一为 OpenSSL（全平台，无需 select 分支，见 tls-backend-selection.md）。
 
 ## 工作区布局
 
 ```text
-WORKSPACE              # workspace(name = "netlib")
-BUILD.bazel            # 根 BUILD：alias //:netlib -> //src/framework/public:netlib
+WORKSPACE              # workspace(name = "cpp_network")
+BUILD.bazel            # 根 BUILD：alias //:netlib -> //src/public:netlib
 .bazelversion          # 6.5.0
 .bazelrc               # 项目级配置（提交）
-netlib_deps.bzl        # 外部依赖引导宏（幂等）
 platforms/
 ├── BUILD              # 平台定义
-└── platforms.bzl      # config_setting_and_platform 宏
+└── platforms.bzl      # config_setting_and_platform 宏 + netlib_select
 third_party/
-├── libcurl/BUILD.bazel        # libcurl 依赖封装（全平台 OpenSSL 后端）
-├── openssl/BUILD.bazel        # OpenSSL 依赖封装（全平台 TLS）
-└── googletest/BUILD.bazel     # 测试依赖封装
+├── libcurl/           # 占位注释（当前链接系统 -lcurl，见 host-openssl-build.md）
+├── openssl/           # 占位注释
+├── bazel_skylib/      # 真实依赖
+├── googletest/        # 测试依赖封装
 src/
-├── core/                      # 协议无关异步基础
-├── http/                      # libcurl 封装
-├── tls/                       # TLS 配置映射
-├── public/include/netlib/     # 公共 API 头
-├── examples/
+├── http/              # HTTP 实现（engine + curl_mapping）
+├── tls/               # Tls 校验（tls.cc）
+├── websocket/         # v2 占位
+├── public/include/http/  # 公共 API 头（http_ 前缀）
 └── tests/
+examples/
+└── consumer_demo/ http_demo/   # 独立 workspace 消费示例
 tools/
 └── platform_setup.sh          # 主机平台检测，生成 .user.bazelrc
 ```
@@ -104,10 +107,11 @@ config_setting_and_platform(
 
 ## .bazelrc 平台别名
 
+实际提交的 `.bazelrc`（与原设计差异：无全局 visibility=hidden；本地覆盖为 `.user.bazelrc`）：
+
 ```text
 build --cxxopt=-std=c++17
 build --host_cxxopt=-std=c++17
-build --features=visibility=hidden
 build --enable_platform_specific_config
 build --test_output=errors
 
@@ -117,64 +121,52 @@ build:linux_x86_64  --platforms=//platforms:linux_x86_64
 build:linux_aarch64 --platforms=//platforms:linux_aarch64
 build:android_arm64 --platforms=//platforms:android_arm64
 
-try-import %workspace%/user.bazelrc
+try-import %workspace%/.user.bazelrc
 ```
 
-`tools/platform_setup.sh`：检测 `uname -s` + `uname -m`，写入 `user.bazelrc` 的 `build --config=<platform>` 行（git-ignored），与 graph_runtime 一致。
+`tools/platform_setup.sh`：检测 `uname -s` + `uname -m`，写入 `.user.bazelrc` 的 `build --config=<platform>` 行（git-ignored），与 graph_runtime 一致。
 
 ## TLS 后端设计（全平台 OpenSSL，无 select）
 
-TLS 后端统一为 OpenSSL（全平台 host + Android），`src/tls/BUILD.bazel` 无需平台 select：
+TLS 后端统一为 OpenSSL（全平台 host + Android）。**当前落地**：`src/tls/BUILD.bazel` 仅依赖公共头（校验逻辑），CURLOPT 映射在 `src/http/detail/curl_mapping.cc`，libcurl 经系统库 `-lcurl` 链接：
 
 ```python
+# src/tls/BUILD.bazel（实际）
 cc_library(
     name = "tls",
-    srcs = ["tls_config.cc"],
-    hdrs = ["tls_config.h"],
-    deps = [
-        "@openssl//:openssl",
-        "@libcurl//:libcurl_openssl",
-    ],
-    visibility = ["//visibility:public"],
+    srcs = ["tls.cc"],
+    deps = ["@cpp_network//src/public:public_headers"],
 )
+
+# src/http/BUILD.bazel 的 engine/client 目标带 linkopts = ["-lcurl"]
 ```
 
 要点：
 - 全平台统一 OpenSSL（用户决策，2026-08-26）；`netlib_select` 宏保留供其他条件依赖使用，但 TLS 不再依赖平台分支；
-- libcurl 以 OpenSSL 后端编译（见 `host-openssl-build.md`；`android-boringssl-build.md` 已废弃）；
-- 公共 API（`src/public/include/netlib/`）绝不出现 TLS 后端类型，保证 FR-016。
+- 源码构建 libcurl/OpenSSL（`host-openssl-build.md` 方案 A）为后续任务；`android-boringssl-build.md` 已废弃；
+- 公共 API（`src/public/include/http/`）绝不出现 TLS 后端类型，保证 FR-016。
 
-## 导出宏（netlib_export.h）
+## 导出宏（http/export.h）
 
-镜像 graph_runtime `graph_runtime_export.h`：
+实际实现（src/public/include/http/export.h，模式同 graph_runtime）：
 
 ```cpp
 #if defined(_WIN32)
-  #if defined(NETLIB_SHARED_LIBRARY)
-    #define NETLIB_API __declspec(dllexport)
+  #if defined(CPP_NETWORK_HTTP_SHARED_LIBRARY)
+    #define CPP_NETWORK_HTTP_EXPORT __declspec(dllexport)
   #else
-    #define NETLIB_API __declspec(dllimport)
+    #define CPP_NETWORK_HTTP_EXPORT __declspec(dllimport)
   #endif
 #else
-  #if defined(NETLIB_SHARED_LIBRARY)
-    #define NETLIB_API __attribute__((visibility("default")))
+  #if defined(CPP_NETWORK_HTTP_SHARED_LIBRARY)
+    #define CPP_NETWORK_HTTP_EXPORT __attribute__((visibility("default")))
   #else
-    #define NETLIB_API
+    #define CPP_NETWORK_HTTP_EXPORT
   #endif
 #endif
 ```
 
-## 依赖引导（netlib_deps.bzl）
-
-```python
-def netlib_setup():
-    if native.existing_rule("libcurl"):
-        return
-    native.http_archive(name = "libcurl", ...)
-    # 同法处理 openssl / googletest / bazel_skylib
-```
-
-幂等守卫 `native.existing_rule(...)` 避免重复定义。
+静态消费时宏为空；`netlib_shared` 目标以 `defines = ["CPP_NETWORK_HTTP_SHARED_LIBRARY"]` 构建。
 
 ## 边界与约束
 
@@ -186,5 +178,5 @@ def netlib_setup():
 
 1. `select()` 分支是否覆盖全部 5 个目标平台 + `//conditions:default` 兜底？
 2. TLS 后端选择是否对公共 API 完全透明（无类型泄漏）？
-3. `user.bazelrc` 是否被 `.gitignore` 忽略，避免平台配置污染提交？
-4. 共享库导出宏（NETLIB_API）与 `-fvisibility=hidden` 是否一致？
+3. `.user.bazelrc` 是否被 `.gitignore` 忽略，避免平台配置污染提交？（已满足）
+4. 共享库导出宏（CPP_NETWORK_HTTP_EXPORT）与 `-fvisibility=hidden` 是否一致？（当前无全局 hidden flag，留共享库阶段统一处理）

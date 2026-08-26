@@ -1,5 +1,7 @@
 # WebSocket API Design（同步版）
 
+> **状态（2026-08-26，spec 003 实现核对）**：WebSocket 为 v2 范围，`src/websocket/` 目前仅有占位 BUILD 目标。命名体系已迁移至 `cpp_network`（本文仍为 001 草案的 `netlib` 命名），实现时需按新命名重新起草。
+
 **Branch**: `001-cpp-network-library` | **Date**: 2026-08-26（同步重构版）
 
 **对应需求**: FR-017（WebSocket：upgrade/message/close）、FR-018（修订：同步）

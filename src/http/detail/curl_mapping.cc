@@ -2,6 +2,12 @@
 
 #include <curl/curl.h>
 
+#include <fcntl.h>
+#include <unistd.h>
+
+#include <cstdlib>
+#include <map>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -33,6 +39,60 @@ const char* MethodToString(Method method) {
 
 }  // namespace
 
+namespace {
+
+// Some system libcurl builds (e.g. macOS) expose the *_BLOB options in their
+// headers but reject them at runtime with CURLE_FAILED_INIT. As a fallback,
+// inline PEM material is materialized into a temp file (cached per content)
+// and passed via path-based options instead. Temp files persist for the
+// process lifetime so paths stay valid across transfers.
+const char* MaterializePem(const std::string& pem) {
+  static std::mutex mutex;
+  static std::map<std::string, std::string> cache;
+  std::lock_guard<std::mutex> lock(mutex);
+  auto it = cache.find(pem);
+  if (it != cache.end()) {
+    return it->second.c_str();
+  }
+
+  const char* tmpdir = std::getenv("TMPDIR");
+  std::string tmpl = (tmpdir != nullptr && tmpdir[0] != '\0' ? std::string(tmpdir) : std::string("/tmp")) +
+                     "/netlib_pem_XXXXXX";
+  std::vector<char> buf(tmpl.begin(), tmpl.end());
+  buf.push_back('\0');
+  int fd = ::mkstemp(buf.data());
+  if (fd < 0) {
+    return nullptr;
+  }
+  ssize_t written = ::write(fd, pem.data(), pem.size());
+  ::close(fd);
+  if (written < 0 || static_cast<std::size_t>(written) != pem.size()) {
+    ::unlink(buf.data());
+    return nullptr;
+  }
+  // The map node keeps a stable copy; the returned pointer remains valid.
+  return cache.emplace(pem, std::string(buf.data())).first->second.c_str();
+}
+
+}  // namespace
+
+ErrorCode EffectiveHardTimeout(const Request& req, const Options& options,
+                               std::chrono::milliseconds* out) {
+  if (req.timeout().has_value()) {
+    *out = *req.timeout();
+    return ErrorCode::kTotalTimeout;
+  }
+  if (options.total_timeout().count() > 0) {
+    *out = options.total_timeout();
+    return ErrorCode::kTotalTimeout;
+  }
+  if (options.write_timeout().count() > 0) {
+    *out = options.write_timeout();
+    return ErrorCode::kWriteTimeout;
+  }
+  return ErrorCode::kNone;
+}
+
 Error ApplyEasyOptions(CURL* easy, const Request& req, const Options& options,
                        curl_slist** headers_out) {
   *headers_out = nullptr;
@@ -44,7 +104,14 @@ Error ApplyEasyOptions(CURL* easy, const Request& req, const Options& options,
                  std::string("curl: failed to set URL: ") + curl_easy_strerror(rc));
   }
 
-  rc = curl_easy_setopt(easy, CURLOPT_CUSTOMREQUEST, MethodToString(req.method()));
+  if (req.method() == Method::kHead) {
+    // NOBODY makes libcurl send a real HEAD request and skip the body phase,
+    // instead of relying on server-side HEAD semantics via CUSTOMREQUEST.
+    rc = curl_easy_setopt(easy, CURLOPT_NOBODY, 1L);
+  } else {
+    rc = curl_easy_setopt(easy, CURLOPT_CUSTOMREQUEST,
+                          MethodToString(req.method()));
+  }
   if (rc != CURLE_OK) {
     return Error(ErrorCode::kInvalidArgument,
                  std::string("curl: failed to set method: ") + curl_easy_strerror(rc));
@@ -83,9 +150,18 @@ Error ApplyEasyOptions(CURL* easy, const Request& req, const Options& options,
   // Timeouts.
   curl_easy_setopt(easy, CURLOPT_CONNECTTIMEOUT_MS,
                    static_cast<long>(options.connect_timeout().count()));
-  // Total timeout bounds the whole transfer.
-  curl_easy_setopt(easy, CURLOPT_TIMEOUT_MS,
-                   static_cast<long>(options.total_timeout().count()));
+  // Hard timeout bounds the whole transfer (request-level > total >
+  // write_timeout fallback); 0 = no hard cap.
+  std::chrono::milliseconds hard_timeout{0};
+  if (EffectiveHardTimeout(req, options, &hard_timeout) != ErrorCode::kNone) {
+    rc = curl_easy_setopt(easy, CURLOPT_TIMEOUT_MS,
+                          static_cast<long>(hard_timeout.count()));
+    if (rc != CURLE_OK) {
+      return Error(ErrorCode::kInvalidArgument,
+                   std::string("curl: failed to set total timeout: ") +
+                       curl_easy_strerror(rc));
+    }
+  }
   // Read/write idle timeout approximated via libcurl's low-speed detection:
   // if no data moves for read_timeout seconds, the transfer times out.
   if (options.read_timeout().count() > 0) {
@@ -135,6 +211,23 @@ Error ApplyEasyOptions(CURL* easy, const Request& req, const Options& options,
     }
   }
 
+  // Keep-alive: enable TCP keepalive probes with the configured idle window
+  // (rounded up to whole seconds). HTTP keep-alive/connection reuse itself is
+  // handled by libcurl's connection cache.
+  if (options.keep_alive().count() > 0) {
+    long keep_idle = (options.keep_alive().count() + 999) / 1000;
+    if (keep_idle < 1) keep_idle = 1;
+    rc = curl_easy_setopt(easy, CURLOPT_TCP_KEEPALIVE, 1L);
+    if (rc == CURLE_OK) {
+      rc = curl_easy_setopt(easy, CURLOPT_TCP_KEEPIDLE, keep_idle);
+    }
+    if (rc != CURLE_OK) {
+      return Error(ErrorCode::kInvalidArgument,
+                   std::string("curl: failed to set TCP keep-alive: ") +
+                       curl_easy_strerror(rc));
+    }
+  }
+
   // TLS.
   const Tls& tls = options.tls();
   if (tls.verify_mode() == VerifyMode::kSkipVerification) {
@@ -151,27 +244,84 @@ Error ApplyEasyOptions(CURL* easy, const Request& req, const Options& options,
                    std::string("curl: failed to set CA file: ") + curl_easy_strerror(rc));
     }
   } else if (tls.ca_pem().has_value()) {
+    bool applied = false;
 #ifdef CURLOPT_CAINFO_BLOB
+    // Needs runtime curl >= 7.77 even when the header declares the option.
     rc = curl_easy_setopt(easy, CURLOPT_CAINFO_BLOB, tls.ca_pem()->c_str());
-#else
-    rc = CURLE_FAILED_INIT;
+    applied = (rc == CURLE_OK);
 #endif
-    if (rc != CURLE_OK) {
-      return Error(ErrorCode::kInvalidArgument,
-                   std::string("curl: failed to set CA blob (needs curl >= 7.77): ") +
-                       curl_easy_strerror(rc));
+    if (!applied) {
+      const char* ca_path = MaterializePem(*tls.ca_pem());
+      if (ca_path == nullptr) {
+        return Error(ErrorCode::kInvalidArgument,
+                     "failed to materialize inline CA PEM for curl without "
+                     "CAINFO_BLOB support");
+      }
+      rc = curl_easy_setopt(easy, CURLOPT_CAINFO, ca_path);
+      if (rc != CURLE_OK) {
+        return Error(ErrorCode::kInvalidArgument,
+                     std::string("curl: failed to set CA file: ") +
+                         curl_easy_strerror(rc));
+      }
     }
   }
   if (tls.client_cert().has_value() && tls.client_key().has_value()) {
-    rc = curl_easy_setopt(easy, CURLOPT_SSLCERT, tls.client_cert()->c_str());
-    if (rc != CURLE_OK) {
-      return Error(ErrorCode::kInvalidArgument,
-                   std::string("curl: failed to set client cert: ") + curl_easy_strerror(rc));
+    // Inline PEM material is detected by the "-----BEGIN" marker and passed
+    // via *_BLOB options (runtime curl >= 7.71) with a temp-file fallback;
+    // anything else is treated as a file path.
+    const bool cert_is_pem =
+        tls.client_cert()->find("-----BEGIN") != std::string::npos;
+    const bool key_is_pem =
+        tls.client_key()->find("-----BEGIN") != std::string::npos;
+
+    bool cert_applied = false;
+    bool key_applied = false;
+    if (cert_is_pem) {
+#ifdef CURLOPT_SSLCERT_BLOB
+      struct curl_blob cert_blob;
+      cert_blob.data = tls.client_cert()->data();
+      cert_blob.len = tls.client_cert()->size();
+      cert_blob.flags = CURLBLOB_NOMEMORY;
+      rc = curl_easy_setopt(easy, CURLOPT_SSLCERT_BLOB, &cert_blob);
+      cert_applied = (rc == CURLE_OK);
+#endif
     }
-    rc = curl_easy_setopt(easy, CURLOPT_SSLKEY, tls.client_key()->c_str());
-    if (rc != CURLE_OK) {
+    if (key_is_pem) {
+#ifdef CURLOPT_SSLKEY_BLOB
+      struct curl_blob key_blob;
+      key_blob.data = tls.client_key()->data();
+      key_blob.len = tls.client_key()->size();
+      key_blob.flags = CURLBLOB_NOMEMORY;
+      rc = curl_easy_setopt(easy, CURLOPT_SSLKEY_BLOB, &key_blob);
+      key_applied = (rc == CURLE_OK);
+#endif
+    }
+
+    const char* cert_path =
+        cert_is_pem ? MaterializePem(*tls.client_cert())
+                    : tls.client_cert()->c_str();
+    const char* key_path = key_is_pem ? MaterializePem(*tls.client_key())
+                                      : tls.client_key()->c_str();
+    if (cert_path == nullptr || key_path == nullptr) {
       return Error(ErrorCode::kInvalidArgument,
-                   std::string("curl: failed to set client key: ") + curl_easy_strerror(rc));
+                   "failed to materialize inline client certificate/key PEM "
+                   "for curl without BLOB support");
+    }
+    if (!cert_applied) {
+      rc = curl_easy_setopt(easy, CURLOPT_SSLCERT, cert_path);
+      if (rc != CURLE_OK) {
+        return Error(ErrorCode::kInvalidArgument,
+                     std::string("curl: failed to set client cert: ") +
+                         curl_easy_strerror(rc));
+      }
+    }
+    if (!key_applied) {
+      rc = curl_easy_setopt(easy, CURLOPT_SSLKEY, key_path);
+      if (rc != CURLE_OK) {
+        return Error(ErrorCode::kInvalidArgument,
+                     std::string("curl: failed to set client key: ") +
+                         curl_easy_strerror(rc));
+      }
     }
   }
   if (tls.sni().has_value()) {

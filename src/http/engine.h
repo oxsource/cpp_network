@@ -1,5 +1,5 @@
-#ifndef NETLIB_ENGINE_H_
-#define NETLIB_ENGINE_H_
+#ifndef CPP_NETWORK_HTTP_ENGINE_H_
+#define CPP_NETWORK_HTTP_ENGINE_H_
 
 #include <curl/curl.h>
 
@@ -43,4 +43,4 @@ class Engine {
 }  // namespace http
 }  // namespace cpp_network
 
-#endif  // NETLIB_ENGINE_H_
+#endif  // CPP_NETWORK_HTTP_ENGINE_H_

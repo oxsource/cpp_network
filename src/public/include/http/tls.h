@@ -5,6 +5,7 @@
 #include <string>
 
 #include "http/export.h"
+#include "http/result.h"
 
 namespace cpp_network {
 namespace http {
@@ -48,6 +49,11 @@ class CPP_NETWORK_HTTP_EXPORT Tls {
     sni_ = hostname;
     return *this;
   }
+
+  // Validates the configuration: CA sources are mutually exclusive, client
+  // certificate/key must be set together, SNI must not contain CRLF, and
+  // inline PEM material must look well-formed.
+  Result<void> Validate() const;
 
  private:
   VerifyMode verify_mode_ = VerifyMode::kVerifyPeer;

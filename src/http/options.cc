@@ -50,6 +50,10 @@ Result<void> Options::Validate() const {
     return Result<void>::Err(
         Error(ErrorCode::kInvalidArgument, "keep_alive must be non-negative"));
   }
+  Result<void> tls_validation = tls_.Validate();
+  if (!tls_validation.ok()) {
+    return tls_validation;
+  }
   return Result<void>::Ok(Error());
 }
 
