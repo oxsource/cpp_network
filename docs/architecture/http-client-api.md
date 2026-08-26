@@ -54,7 +54,7 @@ auto res = client->Get("https://example.com/");
 if (res.ok() && res->ok()) { /* res->status(), res->body() */ }
 ```
 
-完整示例见 `examples/http_demo/`。
+完整示例见 `src/examples/http_demo/`（`sample/` 下为独立 workspace 的外部消费示例）。
 
 ## 边界与约束
 

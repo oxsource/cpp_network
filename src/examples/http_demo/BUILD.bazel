@@ -1,0 +1,12 @@
+# http_demo: exercises real network requests (GET / POST) through the netlib
+# synchronous Client API. Lives inside the main workspace; see sample/ for
+# standalone workspaces that consume netlib as an external dependency.
+package(default_visibility = ["//visibility:public"])
+
+cc_binary(
+    name = "http_demo",
+    srcs = ["main.cc"],
+    deps = [
+        "//src/public:netlib",
+    ],
+)

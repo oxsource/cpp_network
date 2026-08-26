@@ -6,13 +6,11 @@
 /bazel-cache
 /user.bazelrc
 
-# Bazel (consumer_demo 独立工作区产物)
-examples/consumer_demo/bazel-*
-examples/consumer_demo/bazel-bin
-examples/consumer_demo/bazel-out
-examples/consumer_demo/bazel-testlogs
-# Bazel (http_demo 独立工作区产物)
-examples/http_demo/bazel-*
+# Bazel (sample/ 独立工作区产物，每个子目录一个外部消费示例)
+sample/*/bazel-*
+sample/*/bazel-bin
+sample/*/bazel-out
+sample/*/bazel-testlogs
 
 # C/C++
 build/

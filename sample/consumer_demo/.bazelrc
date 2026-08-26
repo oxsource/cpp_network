@@ -1,4 +1,4 @@
-# The example lives in its own Bazel workspace, so it does not inherit the
+# The sample lives in its own Bazel workspace, so it does not inherit the
 # root .bazelrc; mirror the required build settings here.
 build --cxxopt=-std=c++17
 build --host_cxxopt=-std=c++17
