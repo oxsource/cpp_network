@@ -122,10 +122,10 @@
 
 **Purpose**: 跨用户故事的设计收尾与一致性校验
 
-- [ ] T025 [P] Consolidate 关键架构决策为 ADR 文档 in `docs/architecture/adr/`（异步模型、libcurl 选型、外部 Executor、TLS 后端选型等）
-- [ ] T026 [P] 建立需求追踪矩阵：核对设计文档覆盖 spec.md FR-001..FR-021 与 SC-001..SC-008 in `docs/architecture/requirement-traceability.md`
-- [ ] T027 [P] 校验 `quickstart.md` 示例与最终 API 设计文档一致
-- [ ] T028 审查平台无关性保证 (FR-016)：所有设计文档确认无平台 ifdef 泄漏到公共 API
+- [x] T025 [P] Consolidate 关键架构决策为 ADR 文档 in `docs/architecture/adr/`（同步 API、libcurl 选型、TLS 后端选型）
+- [x] T026 [P] 建立需求追踪矩阵：核对设计文档覆盖 spec.md FR-001..FR-021 与 SC-001..SC-008 in `docs/architecture/requirement-traceability.md`
+- [x] T027 [P] 校验 `quickstart.md` 示例与最终 API 设计文档一致
+- [x] T028 审查平台无关性保证 (FR-016)：所有设计文档确认无平台 ifdef 泄漏到公共 API
 
 ---
 
