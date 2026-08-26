@@ -6,7 +6,7 @@
 
 **用户故事**: US2 (P1) — Platform-Specific TLS Adapter
 
-**相关设计**: [tls-backend-selection.md](tls-backend-selection.md)、[bazel-platforms.md](bazel-platforms.md)、[android-boringssl-build.md](android-boringssl-build.md)
+**相关设计**: [tls-backend-selection.md](tls-backend-selection.md)、[bazel-platforms.md](bazel-platforms.md)（`android-boringssl-build.md` 已废弃）
 
 ## Overview
 
@@ -37,9 +37,8 @@ third_party/
 │   └── openssl.bzl          # 版本锁定（3.x LTS）+ sha256 校验
 └── libcurl/
     ├── BUILD.bazel
-    │   ├── :libcurl_openssl      # host 目标（本设计）
-    │   └── :libcurl_boringssl    # android 目标（android-boringssl-build.md）
-    ├── curl_config_host.h        # host config（含 USE_OPENSSL）
+    │   └── :libcurl_openssl      # 全平台目标（OpenSSL 后端，host + Android）
+    ├── curl_config.h             # 全平台 config（含 USE_OPENSSL，按平台裁剪）
     └── curl.bzl
 ```
 
@@ -109,7 +108,7 @@ cc_library(
 
 - host 全部平台共用同一 `curl_config_host.h`（各平台差异由 select() 的 linkopts/defines 收敛）。
 - 不使用系统 OpenSSL（保证可复现性）；如需系统库加速见方案 B，但不在 v1。
-- OpenSSL 3.x 与 BoringSSL 的 libcurl 编译差异由 libcurl 内部 `USE_OPENSSL` 统一处理（BoringSSL 兼容该宏）。
+- OpenSSL 3.x 为全平台 TLS 后端（host + Android）；Android 上的交叉编译（NDK 工具链）在 TLS 实现阶段确认。
 
 ## 评审要点
 

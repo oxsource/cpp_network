@@ -10,8 +10,8 @@
 
 设计 Bazel 工作区布局、平台定义与构建时选择机制，使得：
 1. 一个工作区支持 macOS (x86_64/arm64)、Linux (x86_64/aarch64)、Android (arm64)；
-2. 通过 `select()` 在构建时选择 TLS 后端（host=OpenSSL, Android=BoringSSL）；
-3. 平台相关符号隐藏与导出宏（`NETLIB_API`）机制可复用。
+2. 平台相关符号隐藏与导出宏（`NETLIB_API`）机制可复用；
+3. TLS 后端统一为 OpenSSL（全平台，无需 select 分支，见 tls-backend-selection.md）。
 
 ## 工作区布局
 
@@ -25,9 +25,8 @@ platforms/
 ├── BUILD              # 平台定义
 └── platforms.bzl      # config_setting_and_platform 宏
 third_party/
-├── libcurl/BUILD.bazel        # libcurl 依赖封装（host）
-├── openssl/BUILD.bazel        # OpenSSL 依赖封装
-├── boringssl/BUILD.bazel      # BoringSSL 依赖封装（Android）
+├── libcurl/BUILD.bazel        # libcurl 依赖封装（全平台 OpenSSL 后端）
+├── openssl/BUILD.bazel        # OpenSSL 依赖封装（全平台 TLS）
 └── googletest/BUILD.bazel     # 测试依赖封装
 src/
 ├── core/                      # 协议无关异步基础
@@ -123,28 +122,26 @@ try-import %workspace%/user.bazelrc
 
 `tools/platform_setup.sh`：检测 `uname -s` + `uname -m`，写入 `user.bazelrc` 的 `build --config=<platform>` 行（git-ignored），与 graph_runtime 一致。
 
-## TLS 后端 `select()` 设计
+## TLS 后端设计（全平台 OpenSSL，无 select）
 
-在 `src/tls/BUILD.bazel` 中通过 `netlib_select` 选择 SSL 后端（libcurl 依赖随之切换）：
+TLS 后端统一为 OpenSSL（全平台 host + Android），`src/tls/BUILD.bazel` 无需平台 select：
 
 ```python
-load("//platforms:platforms.bzl", "netlib_select")
-
 cc_library(
     name = "tls",
     srcs = ["tls_config.cc"],
     hdrs = ["tls_config.h"],
-    deps = netlib_select({
-        "@platforms//os:android": ["@boringssl//:boringssl"],
-        "//conditions:default": ["@openssl//:openssl"],
-    }) + ["@libcurl//:libcurl"],
+    deps = [
+        "@openssl//:openssl",
+        "@libcurl//:libcurl_openssl",
+    ],
     visibility = ["//visibility:public"],
 )
 ```
 
 要点：
-- Android 平台统一走 BoringSSL 分支；host（macOS/Linux）走 OpenSSL 分支；
-- libcurl 依赖按平台携带对应 SSL 后端编译（见 `host-openssl-build.md` / `android-boringssl-build.md` 设计）；
+- 全平台统一 OpenSSL（用户决策，2026-08-26）；`netlib_select` 宏保留供其他条件依赖使用，但 TLS 不再依赖平台分支；
+- libcurl 以 OpenSSL 后端编译（见 `host-openssl-build.md`；`android-boringssl-build.md` 已废弃）；
 - 公共 API（`src/public/include/netlib/`）绝不出现 TLS 后端类型，保证 FR-016。
 
 ## 导出宏（netlib_export.h）
@@ -174,7 +171,7 @@ def netlib_setup():
     if native.existing_rule("libcurl"):
         return
     native.http_archive(name = "libcurl", ...)
-    # 同法处理 openssl / boringssl / googletest / bazel_skylib
+    # 同法处理 openssl / googletest / bazel_skylib
 ```
 
 幂等守卫 `native.existing_rule(...)` 避免重复定义。

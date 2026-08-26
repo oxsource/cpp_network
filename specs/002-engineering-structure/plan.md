@@ -12,7 +12,7 @@
 
 **Language/Version**: C++17（`.bazelrc` `--cxxopt=-std=c++17`）
 
-**Primary Dependencies**: libcurl ≥7.86（协议引擎）、OpenSSL 3.x LTS（host TLS 后端）、BoringSSL（Android TLS 后端）、Google Test 1.14.x（测试）、bazel_skylib 1.6.x（构建辅助）。均经 Bazel `http_archive` 拉取，版本+sha256 锁定。
+**Primary Dependencies**: libcurl ≥7.86（协议引擎）、OpenSSL 3.x LTS（全平台 TLS 后端）、Google Test 1.14.x（测试）、bazel_skylib 1.6.x（构建辅助）。均经 Bazel `http_archive` 拉取，版本+sha256 锁定。
 
 **Storage**: N/A — 工程骨架，无持久存储。
 
@@ -51,8 +51,8 @@ specs/002-engineering-structure/
 ### Source Code (repository root)
 
 ```text
-WORKSPACE                  # workspace(name = "netlib") + netlib_setup()
-BUILD.bazel                # 根 BUILD：alias //:netlib -> //src/public:netlib
+WORKSPACE                  # workspace(name = "cpp_network") + netlib_setup()
+BUILD.bazel                # 根 BUILD：alias //:netlib -> @cpp_network//src/public:netlib
 .bazelversion              # 6.5.0
 .bazelrc                   # 基础配置 + 平台别名
 .gitignore                 # Bazel/C++/IDE/OS 忽略
@@ -70,12 +70,10 @@ platforms/
 tools/
 └── platform_setup.sh      # 主机平台检测 → 生成 .user.bazelrc
 third_party/
-├── libcurl/BUILD.bazel    # :libcurl_openssl (host) / :libcurl_boringssl (android)
+├── libcurl/BUILD.bazel    # :libcurl_openssl（USE_OPENSSL，全平台）
 ├── libcurl/libcurl.bzl    # 版本锁定
 ├── openssl/BUILD.bazel    # @openssl//:ssl, :crypto
 ├── openssl/openssl.bzl    # 版本锁定
-├── boringssl/BUILD.bazel  # re-export @boringssl//:ssl, :crypto
-├── boringssl/boringssl.bzl
 ├── googletest/BUILD.bazel # re-export gtest
 └── bazel_skylib/BUILD.bazel
 src/

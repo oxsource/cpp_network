@@ -1,0 +1,12 @@
+# Unit and integration tests for the netlib library.
+package(default_visibility = ["//visibility:public"])
+
+cc_test(
+    name = "smoke_test",
+    srcs = ["smoke_test.cc"],
+    deps = [
+        "@cpp_network//src/public:netlib",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)

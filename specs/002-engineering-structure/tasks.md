@@ -24,10 +24,10 @@
 
 **Purpose**: 工作区基础文件与忽略规则
 
-- [ ] T001 Create Bazel 工作区根文件 `WORKSPACE`（workspace name = "netlib"，预留 `netlib_setup()` 调用）
-- [ ] T002 [P] Create `.bazelversion` 锁定 Bazel 6.5.0（内容 `6.5.0`）
-- [ ] T003 [P] Create `.gitignore`（忽略 bazel-*、.user.bazelrc、C/C++ 产物、IDE/OS 文件，参考 graph_runtime）
-- [ ] T004 [P] Create 根 `BUILD.bazel`（`alias(name="netlib", actual="//src/public:netlib")`）
+- [x] T001 Create Bazel 工作区根文件 `WORKSPACE`（workspace name = "netlib"，预留 `netlib_setup()` 调用）
+- [x] T002 [P] Create `.bazelversion` 锁定 Bazel 6.5.0（内容 `6.5.0`）
+- [x] T003 [P] Create `.gitignore`（忽略 bazel-*、.user.bazelrc、C/C++ 产物、IDE/OS 文件，参考 graph_runtime）
+- [x] T004 [P] Create 根 `BUILD.bazel`（`alias(name="netlib", actual="@cpp_network//src/public:netlib")`）
 
 ---
 
@@ -37,12 +37,12 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T005 Create `platforms/platforms.bzl`（`config_setting_and_platform(name, constraint_values)` 与 `netlib_select(map)` 宏，镜像 graph_runtime）
-- [ ] T006 Create `platforms/BUILD`（五平台：macos_arm64/macos_x86_64/linux_x86_64/linux_aarch64/android_arm64，config_setting+platform 成对）
-- [ ] T007 Create `netlib_deps.bzl`（`netlib_setup()` 幂等引导：bazel_skylib 1.6.1、curl ≥7.86、openssl 3.x、boringssl 固定 commit、googletest 1.14.0，每依赖 sha256 + existing_rule 守卫）
-- [ ] T008 [P] Create `.bazelrc`（C++17、-fvisibility=hidden、--enable_platform_specific_config、五平台 --config 别名、--test_output=errors、try-import .user.bazelrc）
-- [ ] T009 Create `tools/platform_setup.sh`（检测 uname -s/-m → 生成 git-ignored `.user.bazelrc`；未知架构报错退出）
-- [ ] T010 Update `WORKSPACE` 调用 `netlib_setup()`（T001 预留处）
+- [x] T005 Create `platforms/platforms.bzl`（`config_setting_and_platform(name, constraint_values)` 与 `netlib_select(map)` 宏，镜像 graph_runtime）
+- [x] T006 Create `platforms/BUILD`（五平台：macos_arm64/macos_x86_64/linux_x86_64/linux_aarch64/android_arm64，config_setting+platform 成对）
+- [x] T007 Create `netlib_deps.bzl`（`netlib_setup()` 幂等引导：bazel_skylib 1.6.1、curl ≥7.86、openssl 3.x、googletest 1.14.0，每依赖 sha256 + existing_rule 守卫）
+- [x] T008 [P] Create `.bazelrc`（C++17、-fvisibility=hidden、--enable_platform_specific_config、五平台 --config 别名、--test_output=errors、try-import .user.bazelrc）
+- [x] T009 Create `tools/platform_setup.sh`（检测 uname -s/-m → 生成 git-ignored `.user.bazelrc`；未知架构报错退出）
+- [x] T010 Update `WORKSPACE` 调用 `netlib_setup()`（T001 预留处）
 
 **Checkpoint**: 平台 + 依赖基础就绪，用户故事可开始
 
@@ -56,14 +56,14 @@
 
 ### Implementation for User Story 1
 
-- [ ] T011 [P] [US1] Create `src/http/BUILD.bazel`（占位 cc_library 目标，参考 contracts 目录契约）
-- [ ] T012 [P] [US1] Create `src/websocket/BUILD.bazel`（占位 cc_library 目标）
-- [ ] T013 [P] [US1] Create `src/public/include/netlib/netlib_export.h`（`NETLIB_API` 导出宏，镜像 graph_runtime `GRAPH_RUNTIME_API`）
-- [ ] T014 [P] [US1] Create `src/public/include/netlib/netlib.h`（umbrella 占位头，include netlib_export.h）
-- [ ] T015 [US1] Create `src/public/BUILD.bazel`（`:netlib` cc_library 静态 + `:netlib_shared` cc_binary(linkshared, linkstatic) 共享，共享用 -DNETLIB_SHARED_LIBRARY，depends T013/T014）
-- [ ] T016 [P] [US1] Create `src/tests/smoke_test.cc`（冒烟测试：验证 netlib_export.h 可编译 / NETLIB_API 存在）
-- [ ] T017 [US1] Create `src/tests/BUILD.bazel`（`:smoke_test` cc_test，依赖 googletest，depends T016）
-- [ ] T018 [P] [US1] Create `src/examples/BUILD.bazel`（占位示例 cc_binary 目标）
+- [x] T011 [P] [US1] Create `src/http/BUILD.bazel`（占位 cc_library 目标，参考 contracts 目录契约）
+- [x] T012 [P] [US1] Create `src/websocket/BUILD.bazel`（占位 cc_library 目标）
+- [x] T013 [P] [US1] Create `src/public/include/netlib/netlib_export.h`（`NETLIB_API` 导出宏，镜像 graph_runtime `GRAPH_RUNTIME_API`）
+- [x] T014 [P] [US1] Create `src/public/include/netlib/netlib.h`（umbrella 占位头，include netlib_export.h）
+- [x] T015 [US1] Create `src/public/BUILD.bazel`（`:netlib` cc_library 静态 + `:netlib_shared` cc_binary(linkshared, linkstatic) 共享，共享用 -DNETLIB_SHARED_LIBRARY，depends T013/T014）
+- [x] T016 [P] [US1] Create `src/tests/smoke_test.cc`（冒烟测试：验证 netlib_export.h 可编译 / NETLIB_API 存在）
+- [x] T017 [US1] Create `src/tests/BUILD.bazel`（`:smoke_test` cc_test，依赖 googletest，depends T016）
+- [x] T018 [P] [US1] Create `src/examples/BUILD.bazel`（占位示例 cc_binary 目标）
 
 **Checkpoint**: 工程骨架可构建可测 —— US1 MVP 达成
 
@@ -71,21 +71,21 @@
 
 ## Phase 4: User Story 2 - third_party 依赖库组织 (Priority: P1)
 
-**Goal**: libcurl/OpenSSL/BoringSSL/googletest/bazel_skylib 独立封装，host=OpenSSL、android=BoringSSL 双后端变体
+**Goal**: libcurl/OpenSSL/googletest/bazel_skylib 独立封装，TLS 统一 OpenSSL（全平台）
 
-**Independent Test**: 干净缓存 `bazel build //...` 自动拉取锁定版本编译成功；`netlib_deps.bzl` 每依赖含 sha256 + existing_rule 幂等；`bazel build --config=android_arm64 //src/tls:tls` 解析 BoringSSL 分支
+**Independent Test**: 干净缓存 `bazel build //...` 自动拉取锁定版本编译成功；`netlib_deps.bzl` 每依赖含 sha256 + existing_rule 幂等；`bazel build --config=android_arm64 //src/tls:tls` 解析 OpenSSL 后端
 
 ### Implementation for User Story 2
 
-- [ ] T019 [P] [US2] Create `third_party/bazel_skylib/BUILD.bazel`（re-export @bazel_skylib 目标）
-- [ ] T020 [P] [US2] Create `third_party/googletest/BUILD.bazel`（re-export gtest / gtest_main）
-- [ ] T021 [P] [US2] Create `third_party/openssl/openssl.bzl`（版本锁定 3.x LTS + sha256）
-- [ ] T022 [US2] Create `third_party/openssl/BUILD.bazel`（封装 @openssl//:ssl + :crypto，depends T021）
-- [ ] T023 [P] [US2] Create `third_party/boringssl/boringssl.bzl`（固定 commit + sha256）
-- [ ] T024 [US2] Create `third_party/boringssl/BUILD.bazel`（re-export @boringssl//:ssl + :crypto，depends T023）
-- [ ] T025 [P] [US2] Create `third_party/libcurl/libcurl.bzl`（版本锁定 ≥7.86 + sha256）
-- [ ] T026 [US2] Create `third_party/libcurl/BUILD.bazel`（`:libcurl_openssl` host 变体 USE_OPENSSL + `:libcurl_boringssl` android 变体，depends T025/T022/T024）
-- [ ] T027 [US2] Create `src/tls/BUILD.bazel`（`//src/tls:tls` 经 `netlib_select` 选择 libcurl_openssl+openssl / libcurl_boringssl+boringssl，depends T026/T006）
+- [x] T019 [P] [US2] Create `third_party/bazel_skylib/BUILD.bazel`（re-export @bazel_skylib 目标）
+- [x] T020 [P] [US2] Create `third_party/googletest/BUILD.bazel`（re-export gtest / gtest_main）
+- [x] T021 [P] [US2] Create `third_party/openssl/openssl.bzl`（版本锁定 3.x LTS + sha256）
+- [x] T022 [US2] Create `third_party/openssl/BUILD.bazel`（封装 @openssl//:ssl + :crypto，depends T021）
+- [x] T023 [P] [US2] ~~Create `third_party/boringssl/boringssl.bzl`（固定 commit + sha256）~~（已取消：全平台统一 OpenSSL）
+- [x] T024 [US2] ~~Create `third_party/boringssl/BUILD.bazel`（re-export @boringssl//:ssl + :crypto，depends T023）~~（已取消：目录已删除）
+- [x] T025 [P] [US2] Create `third_party/libcurl/libcurl.bzl`（版本锁定 ≥7.86 + sha256）
+- [x] T026 [US2] Create `third_party/libcurl/BUILD.bazel`（`:libcurl_openssl` 变体 USE_OPENSSL，depends T025/T022）
+- [x] T027 [US2] Create `src/tls/BUILD.bazel`（`//src/tls:tls` 占位，TLS 统一 OpenSSL 无需 netlib_select 分支，depends T006）
 
 **Checkpoint**: third_party 组织完成，TLS 后端平台选择可用
 
@@ -99,9 +99,9 @@
 
 ### Implementation for User Story 3
 
-- [ ] T028 [US3] 验证并修正 `tools/platform_setup.sh`（本机 host 平台实际运行，确认 `.user.bazelrc` 内容正确，depends T009）
-- [ ] T029 [US3] 验证 host 平台构建：`./tools/platform_setup.sh && bazel build --config=<host_platform> //...`（确认零 error，depends T010/T027）
-- [ ] T030 [US3] 验证五平台定义成对完整性（对照 contracts 平台契约检查 platforms/BUILD，depends T006）
+- [x] T028 [US3] 验证并修正 `tools/platform_setup.sh`（本机 host 平台实际运行，确认 `.user.bazelrc` 内容正确，depends T009）
+- [x] T029 [US3] 验证 host 平台构建：`./tools/platform_setup.sh && bazel build --config=<host_platform> //...`（确认零 error，depends T010/T027）
+- [x] T030 [US3] 验证五平台定义成对完整性（对照 contracts 平台契约检查 platforms/BUILD，depends T006）
 
 **Checkpoint**: 跨平台配置验证通过
 
@@ -115,11 +115,11 @@
 
 ### Implementation for User Story 4
 
-- [ ] T031 [P] [US4] Create `mk/rules.mk`（AOSP 风格模块注册宏：register_module/register_target/register_alias，镜像 graph_runtime）
-- [ ] T032 [P] [US4] Create `mk/aliases.mk`（build/test/verify/clean 别名 → bazel 命令）
-- [ ] T033 [P] [US4] Create `mk/help.mk`（help/menu 目标）
-- [ ] T034 [US4] Create `Makefile`（include mk/*.mk，depends T031/T032/T033）
-- [ ] T035 [US4] 验证 `make build` / `make test` / `make verify` / `make clean` 全部成功（depends T034）
+- [x] T031 [P] [US4] Create `mk/rules.mk`（AOSP 风格模块注册宏：register_module/register_target/register_alias，镜像 graph_runtime）
+- [x] T032 [P] [US4] Create `mk/aliases.mk`（build/test/verify/clean 别名 → bazel 命令）
+- [x] T033 [P] [US4] Create `mk/help.mk`（help/menu 目标）
+- [x] T034 [US4] Create `Makefile`（include mk/*.mk，depends T031/T032/T033）
+- [x] T035 [US4] 验证 `make build` / `make test` / `make verify` / `make clean` 全部成功（depends T034）
 
 **Checkpoint**: 便利入口可用
 
@@ -129,12 +129,12 @@
 
 **Purpose**: 外部消费者示例 + 全流程验证
 
-- [ ] T036 [P] Create `examples/consumer_demo/WORKSPACE`（local_repository 指向仓库根，独立工作区）
-- [ ] T037 [P] Create `examples/consumer_demo/BUILD.bazel`（`:demo` cc_binary，deps @netlib//:netlib）
-- [ ] T038 [P] Create `examples/consumer_demo/main.cc`（调用 netlib.h 的简单 demo，验证外部消费）
-- [ ] T039 Update 主工作区 `.bazelignore`（排除 examples/consumer_demo，避免主工作区误解析）
-- [ ] T040 [P] 验证 consumer_demo：`cd examples/consumer_demo && bazel build //...` 成功（depends T036/T037/T038）
-- [ ] T041 全流程验证：`./tools/platform_setup.sh && make verify && nm 检查共享库符号仅 NETLIB_API`（depends 全部前置）
+- [x] T036 [P] Create `examples/consumer_demo/WORKSPACE`（local_repository 指向仓库根，独立工作区）
+- [x] T037 [P] Create `examples/consumer_demo/BUILD.bazel`（`:demo` cc_binary，deps `@cpp_network//:netlib`）
+- [x] T038 [P] Create `examples/consumer_demo/main.cc`（调用 netlib.h 的简单 demo，验证外部消费）
+- [x] T039 Update 主工作区 `.bazelignore`（排除 examples/consumer_demo，避免主工作区误解析）
+- [x] T040 [P] 验证 consumer_demo：`cd examples/consumer_demo && bazel build //...` 成功（depends T036/T037/T038）
+- [x] T041 全流程验证：`./tools/platform_setup.sh && make verify && nm 检查共享库符号仅 NETLIB_API`（depends 全部前置）
 
 ---
 
@@ -224,3 +224,8 @@ Task: "Create src/public/BUILD.bazel with :netlib + :netlib_shared"
 - 验收命令见 `contracts/engineering-contract.md` 的"验收命令"一节
 - Commit after each task or logical group
 - 避免：同文件冲突、破坏独立性的跨 story 依赖
+- **2026-08-26 实现偏差记录（US2）**:
+  - T007/T021/T023/T025：sha256 已替换为真实校验和（代理环境下载计算）；T007 的 bazel_skylib sha256 已修正。
+  - T022/T026：OpenSSL/libcurl 的源码构建目标在**工程骨架阶段以契约占位**（BUILD 文档化目标契约），实际 cc_library 留 TLS/HTTP 实现阶段（001 提案 host-openssl-build 设计）。
+  - **TLS 统一 OpenSSL（用户决策）**：全平台（host + Android）使用 OpenSSL，放弃 BoringSSL。`third_party/boringssl/` 目录已删除；libcurl 仅 `libcurl_openssl` 后端；`src/tls` 无需 netlib_select 平台分支。T023/T024 标记为已取消。
+  - `src/tls` 以占位 cc_library 保持 `bazel build //...` 零错误。

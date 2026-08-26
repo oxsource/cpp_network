@@ -37,14 +37,15 @@
   - 事件桥接（WatchFd → 外部 Executor）: rejected — 属异步流程，违背"事件外置"。
   - 库内 epoll/kqueue 事件循环: rejected — 库内事件循环，违背用户约束。
 
-## Decision 4: TLS Strategy — libcurl Build-Time SSL Backend
+## Decision 4: TLS Strategy — 全平台统一 OpenSSL（修订版）
 
-- **Decision**: TLS is handled by libcurl's SSL backend. libcurl is built with OpenSSL on host platforms and BoringSSL on Android, selected via Bazel `select()`. A thin `TlsConfig` maps to libcurl options (`CURLOPT_SSL_VERIFYPEER`, `CURLOPT_SSL_VERIFYHOST`, `CURLOPT_CAINFO`, `CURLOPT_SSLCERT`).
-- **Rationale**: Eliminates a custom runtime `TlsAdapter` C++ interface. libcurl already abstracts SSL backends behind a stable C API, and BoringSSL is a supported libcurl build backend on Android. FR-016 (platform-independent public API) is preserved because libcurl's API is stable across backends.
-- **Caveats**: BoringSSL removes some deprecated OpenSSL APIs; pin libcurl+BoringSSL versions that are compatible on Android (e.g., NDK-provided or prebuilt).
+- **Decision**: TLS is handled by libcurl's SSL backend, using **OpenSSL 3.x LTS on ALL platforms** (host macOS/Linux and Android). No build-time backend `select()` is needed. A thin `TlsConfig` maps to libcurl options (`CURLOPT_SSL_VERIFYPEER`, `CURLOPT_SSL_VERIFYHOST`, `CURLOPT_CAINFO`, `CURLOPT_SSLCERT`).
+- **Rationale**: Eliminates a custom runtime `TlsAdapter` C++ interface and the platform `select()` branch. FR-016 (platform-independent public API) is preserved because libcurl's API is stable.
+- **Revision note (2026-08-26)**: 初稿为"host=OpenSSL / Android=BoringSSL"双后端 select() 方案。用户决策**全平台统一 OpenSSL**：简化架构、规避 BoringSSL 与 Bazel 6.5 兼容问题。`android-boringssl-build.md` 已废弃。
+- **Caveats**: Android 上需确认 OpenSSL 3.x 的 NDK 交叉编译与系统 CA 处理。
 - **Alternatives considered**:
   - Custom `TlsAdapter` interface over OpenSSL/BoringSSL directly: rejected — duplicates libcurl's own backend abstraction, adds a large interface to maintain.
-  - `#ifdef` TLS branches: rejected — pollutes code (FR-016).
+  - Android BoringSSL（初稿）: rejected — 全平台统一 OpenSSL（用户决策）。
 
 ## Decision 5: Bazel Platform Selection (mirrors graph_runtime)
 
@@ -83,6 +84,6 @@
 ## Open Questions for Implementation Phase (deferred, not blocking)
 
 - Exact libcurl version to pin (recommend latest stable ≥7.86 for WebSocket support).
-- Exact OpenSSL (3.x LTS) and BoringSSL versions to pin.
-- Whether BoringSSL libcurl is available as a Bazel http_archive or needs NDK integration.
+- Exact OpenSSL (3.x LTS) version to pin.
+- Android 上 OpenSSL 3.x 的 NDK 交叉编译与系统 CA 处理方案。
 - Whether `nlohmann_json` is needed for v1 (only if JSON request/response helpers are required).

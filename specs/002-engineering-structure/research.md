@@ -4,7 +4,7 @@
 
 ## Decision 1: 工作区布局 — 单主工作区 + 独立消费者 demo
 
-- **Decision**: 仓库根为主 Bazel 工作区（`workspace(name = "netlib")`）；`examples/consumer_demo/` 为独立工作区，经 `local_repository` 依赖主工作区，并被主工作区 `.bazelignore` 排除。
+- **Decision**: 仓库根为主 Bazel 工作区（`workspace(name = "cpp_network")`，内部依赖引用统一以 `@cpp_network//` 开头，如 `@cpp_network//src/public:netlib`）；`examples/consumer_demo/` 为独立工作区，经 `local_repository` 依赖主工作区，并被主工作区 `.bazelignore` 排除。
 - **Rationale**: 完全镜像 graph_runtime 模式。主工作区自洽构建；消费者 demo 独立验证"外部工程如何依赖本库"（FR-012）。
 - **Alternatives considered**:
   - 单一工作区含消费者示例：rejected — 无法演示真实的 local_repository 消费路径。
@@ -19,15 +19,14 @@
   |------|----------|------|------|
   | bazel_skylib | bazel_skylib | 1.6.1 | 构建辅助 |
   | libcurl | curl | ≥7.86（源码） | 协议引擎 |
-  | OpenSSL | openssl | 3.x LTS（源码） | host TLS |
-  | BoringSSL | boringssl | 固定 commit | Android TLS |
+  | OpenSSL | openssl | 3.x LTS（源码） | 全平台 TLS（host + Android） |
   | Google Test | googletest | 1.14.0 | 测试 |
 
-## Decision 3: third_party 封装 — 每依赖独立目录 + libcurl 双后端变体
+## Decision 3: third_party 封装 — 每依赖独立目录 + libcurl OpenSSL 后端
 
-- **Decision**: `third_party/<dep>/BUILD.bazel` + `<dep>.bzl`（版本锁定）独立封装。libcurl 提供两个目标：`libcurl_openssl`（host，`USE_OPENSSL`）与 `libcurl_boringssl`（android）。
-- **Rationale**: graph_runtime 的 nlohmann_json 封装先例 + 001 提案 tls-backend-selection 设计。BoringSSL 兼容 OpenSSL API 命名空间，libcurl 以 `USE_OPENSSL` 宏编译即可（BoringSSL 提供 `SSL_*`/`X509_*` 符号）。
-- **Alternatives considered**: 单 libcurl 目标 + 运行时切换：rejected — 后端在构建时固定（001 ADR-003）。自研 TlsAdapter：rejected — 001 已否决。
+- **Decision**: `third_party/<dep>/BUILD.bazel` + `<dep>.bzl`（版本锁定）独立封装。libcurl 提供 `libcurl_openssl` 目标（`USE_OPENSSL`），TLS 后端统一为 OpenSSL（host 与 Android 平台）。
+- **Rationale**: graph_runtime 的 nlohmann_json 封装先例 + 001 提案 host-openssl-build 设计。**全平台统一 OpenSSL 简化了架构**：无需平台 select 分支、无 BoringSSL 与 Bazel 6.5 的兼容问题。
+- **Alternatives considered**: libcurl 双后端变体（openssl/boringssl）：rejected — 用户决定全平台用 OpenSSL，无需 Android BoringSSL 分支。
 
 ## Decision 4: 平台抽象 — platforms.bzl 宏 + 五平台
 
@@ -58,6 +57,6 @@
 
 ## Open Questions (deferred, 非阻塞)
 
-- libcurl 源码在 Bazel 内构建的具体方式（预生成 curl_config.h vs configure 脚本）：实现阶段确定，倾向预生成 `curl_config.h`（host/android 各一份，镜像 001 提案 android-boringssl-build.md 方案 A2）。
+- libcurl 源码在 Bazel 内构建的具体方式（预生成 curl_config.h vs configure 脚本）：实现阶段确定，倾向预生成 `curl_config.h`（全平台统一配置，参考 001 提案 host-openssl-build.md）。
 - OpenSSL 3.x 具体小版本：实现阶段锁定（3.0.x 或 3.3.x）。
 - 是否需要 nlohmann_json（001 提案可选）：v1 工程骨架暂不引入。

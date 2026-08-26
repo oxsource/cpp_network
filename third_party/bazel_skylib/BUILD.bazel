@@ -1,0 +1,4 @@
+# Re-export of the bazel_skylib external dependency.
+# The dependency itself is fetched by netlib_deps.bzl and used via
+# @bazel_skylib//... directly; this package keeps third_party organization
+# consistent with other deps.

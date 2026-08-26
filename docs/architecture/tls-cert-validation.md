@@ -10,7 +10,7 @@
 
 ## Overview
 
-定义证书校验的完整流程：从 `TlsConfig` 配置到 libcurl 执行握手、校验失败时的错误映射。校验完全委托 libcurl（经 BoringSSL/OpenSSL 后端），库负责选项映射与错误语义化。
+定义证书校验的完整流程：从 `TlsConfig` 配置到 libcurl 执行握手、校验失败时的错误映射。校验完全委托 libcurl（OpenSSL 后端），库负责选项映射与错误语义化。
 
 ## 校验模式
 

@@ -1,0 +1,13 @@
+# Placeholder library for the HTTP protocol implementation.
+# Actual HTTP implementation follows the 001 proposal architecture docs
+# (docs/architecture/http-*.md) in a later implementation phase.
+package(default_visibility = [
+    "@cpp_network//src/public:__pkg__",
+])
+
+cc_library(
+    name = "http",
+    hdrs = [],
+    srcs = [],
+    deps = [],
+)

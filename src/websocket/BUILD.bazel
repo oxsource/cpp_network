@@ -1,0 +1,10 @@
+# Placeholder library for the WebSocket protocol implementation (v2).
+# Follows docs/architecture/websocket-*.md from the 001 proposal.
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "websocket",
+    hdrs = [],
+    srcs = [],
+    deps = [],
+)

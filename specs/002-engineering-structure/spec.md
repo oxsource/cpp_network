@@ -30,9 +30,9 @@
 
 ### User Story 2 - 依赖库的 third_party 组织 (Priority: P1)
 
-工程需要封装 libcurl、OpenSSL/BoringSSL、googletest 等外部依赖。开发者打开 `third_party/` 目录，能看到每个依赖有独立的封装目录（BUILD + 版本锁定 bzl），遵循 graph_runtime 的 `graph_runtime_deps.bzl` 引导模式。依赖通过 Bazel `http_archive` 拉取，版本与校验和锁定，幂等可复现。
+工程需要封装 libcurl、OpenSSL、googletest 等外部依赖。开发者打开 `third_party/` 目录，能看到每个依赖有独立的封装目录（BUILD + 版本锁定 bzl），遵循 graph_runtime 的 `graph_runtime_deps.bzl` 引导模式。依赖通过 Bazel `http_archive` 拉取，版本与校验和锁定，幂等可复现。TLS 统一使用 OpenSSL（所有平台）。
 
-**Why this priority**: 依赖组织决定跨平台构建的可复现性。TLS 后端（OpenSSL/BoringSSL）的平台选择依赖 third_party 封装正确。
+**Why this priority**: 依赖组织决定跨平台构建的可复现性。TLS 后端（OpenSSL）的封装正确性依赖 third_party 组织。
 
 **Independent Test**: 可以独立验证——执行 `bazel build` 时依赖自动解析成功；查看 `netlib_deps.bzl` 中各依赖带版本与 sha256。
 
@@ -42,7 +42,7 @@
 
 2. **Given** `netlib_deps.bzl`，**When** 开发者检查各依赖声明，**Then** 每个依赖含明确的版本/commit 与 sha256 校验，且用 `native.existing_rule` 做幂等守卫（重复 setup 不报错）。
 
-3. **Given** Android 平台配置，**When** 开发者执行 `bazel build --config=android_arm64 //src/tls:tls`，**Then** BoringSSL 作为 libcurl 后端被解析构建。
+3. **Given** 工程配置（含 Android 平台），**When** 开发者执行 `bazel build --config=android_arm64 //src/tls:tls`，**Then** OpenSSL 作为 TLS 后端被解析构建。
 
 ---
 
@@ -96,13 +96,13 @@
 ### Functional Requirements
 
 - **FR-001**: 工程 MUST 提供可被 Bazel 6.5 解析的完整工作区（根 BUILD/WORKSPACE、`.bazelversion` 锁定 6.5.0）。
-- **FR-002**: 工程 MUST 提供依赖引导宏 `netlib_deps.bzl`，幂等拉取 libcurl、openssl、boringssl、googletest、bazel_skylib，且每个依赖带版本锁定与 sha256 校验。
+- **FR-002**: 工程 MUST 提供依赖引导宏 `netlib_deps.bzl`，幂等拉取 libcurl、openssl、googletest、bazel_skylib，且每个依赖带版本锁定与 sha256 校验。
 - **FR-003**: 工程 MUST 在 `platforms/` 下定义五个平台（macos_arm64/macos_x86_64/linux_x86_64/linux_aarch64/android_arm64），以 `config_setting` + `platform` 成对方式。
 - **FR-004**: 工程 MUST 提供 `.bazelrc`，含 C++17、`-fvisibility=hidden`、`--enable_platform_specific_config`、`--config=<platform>` 别名、`--test_output=errors`，并通过 `try-import` 加载 `.user.bazelrc`。
 - **FR-005**: 工程 MUST 提供平台设置脚本 `tools/platform_setup.sh`，自动检测主机 OS/架构并生成 `.user.bazelrc`；该文件 MUST 被 gitignore。
 - **FR-006**: 工程 MUST 按 001 提案目录结构组织源码：`src/http`、`src/websocket`、`src/tls`、`src/public/include/netlib`、`src/examples`、`src/tests`，各目录有 BUILD 文件。
 - **FR-007**: 工程 MUST 提供公共库目标 `//:netlib`（静态）与共享库目标（`linkshared`），共享库仅导出 `NETLIB_API` 符号。
-- **FR-008**: 工程 MUST 在 `third_party/` 为每个外部依赖提供独立封装目录（BUILD + 版本锁定的 bzl），libcurl 提供 host(OpenSSL) 与 android(BoringSSL) 两个后端变体目标。
+- **FR-008**: 工程 MUST 在 `third_party/` 为每个外部依赖提供独立封装目录（BUILD + 版本锁定的 bzl），TLS 统一使用 OpenSSL（host 与 Android 平台）。
 - **FR-009**: 工程 MUST 提供 `src/tests` 冒烟测试目标，验证工程骨架可测（至少一个通过的空测试/结构测试）。
 - **FR-010**: 工程 MUST 提供便利构建入口（Makefile + mk/ 模块化，参考 graph_runtime），至少包含 build/test/verify/clean 目标。
 - **FR-011**: 工程 MUST 提供 `.gitignore`，忽略 Bazel 产物（bazel-*、.user.bazelrc）、C/C++ 构建产物、IDE/OS 文件。
@@ -133,6 +133,6 @@
 - 参考 graph_runtime 的工程组织：`graph_runtime_deps.bzl` 引导、`platforms/platforms.bzl` 宏、`.bazelrc` 平台别名、`tools/platform_setup.sh`、Makefile + mk/ 模块化、`third_party/` 封装、`examples/consumer_demo` 消费者示例。
 - 本提案落地工程骨架与依赖组织，不含协议实现代码（协议实现在 001 提案中为架构设计，本提案只搭结构，代码留后续实现阶段）。
 - Bazel 版本锁定 6.5.0（`.bazelversion`）；host 平台 macOS/Linux 实际可构建，Android arm64 平台定义可解析（实际 NDK 构建依赖工具链环境，本提案保证平台配置与依赖解析正确）。
-- 依赖版本默认值：libcurl ≥7.86（WebSocket 支持）、OpenSSL 3.x LTS、BoringSSL 固定 commit、googletest 1.14.x、bazel_skylib 1.6.x（与 graph_runtime 对齐）。
+- 依赖版本默认值：libcurl ≥7.86（WebSocket 支持）、OpenSSL 3.x LTS（全平台 TLS）、googletest 1.14.x、bazel_skylib 1.6.x（与 graph_runtime 对齐）。
 - 公共库命名 `netlib`（001 提案命名），导出宏 `NETLIB_API`。
 - 工程根位于仓库根目录（Bazel 工作区根），沿用 graph_runtime 的"主工作区 + 独立消费者 demo 工作区"模式。

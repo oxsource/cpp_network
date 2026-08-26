@@ -10,7 +10,7 @@
 
 ## Overview
 
-`TlsConfig` 是暴露给用户的唯一 TLS 配置类型。它只通过 libcurl 的稳定 C API（`CURLOPT_SSL_*`）生效，不暴露 OpenSSL/BoringSSL 的任何类型或符号，保证 FR-016（平台无关公共 API）。
+`TlsConfig` 是暴露给用户的唯一 TLS 配置类型。它只通过 libcurl 的稳定 C API（`CURLOPT_SSL_*`）生效，不暴露 OpenSSL 的任何类型或符号，保证 FR-016（平台无关公共 API）。
 
 ## 类型定义
 
@@ -94,7 +94,7 @@ class TlsConfig {
 |------|--------------|------|
 | macOS | 系统信任库（`curl` 默认，经 libcurl 的 SecureTransport/OpenSSL 路径） | 无需额外配置 |
 | Linux | 系统信任库（`/etc/ssl/certs` 等） | 无需额外配置 |
-| Android | **需要显式 CA**：Android 系统 CA 在设备 trust store，libcurl（BoringSSL 后端）默认不带 Android 系统 CA；方案见 `android-boringssl-build.md`（预置系统 CA bundle 或注入） | v1 默认行为需文档明确 |
+| Android | **需要显式 CA**：Android 系统 CA 在设备 trust store，libcurl（OpenSSL 后端）默认不带 Android 系统 CA；方案见 `android-boringssl-build.md`（已废弃）或全平台 OpenSSL 的 NDK CA 注入 | v1 默认行为需文档明确 |
 
 ## 默认值策略
 

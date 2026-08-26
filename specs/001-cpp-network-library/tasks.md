@@ -217,3 +217,4 @@ With multiple designers:
 - 避免：模糊任务、同文件冲突、破坏独立性的跨 story 依赖
 - 后续 `/speckit.implement` 将以本 tasks.md 及 `docs/architecture/` 文档为输入
 - **2026-08-26 同步重构**：架构由异步（Promise/Executor/WatchFd）改为**同步阻塞 API**（用户决策）。`core-executor.md`/`core-promise.md`/`curl-engine-bridge.md` 已移除并合并为 `sync-engine.md`；contracts/data-model/spec 已同步更新。T004/T005/T007 描述已改写反映新架构。
+- **2026-08-26 TLS 修订**：用户决策**全平台统一 OpenSSL**（放弃 Android BoringSSL）。`tls-backend-selection.md` 已改写为全平台 OpenSSL；`android-boringssl-build.md` 已标注废弃（保留历史）；ADR-003 已修订。上述 US2 任务（T008/T014-T017）为历史执行记录，描述原始设计；T016 产出物（android-boringssl-build.md）现已废弃，实现阶段以全平台 OpenSSL 为准。

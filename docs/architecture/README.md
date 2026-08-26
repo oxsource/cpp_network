@@ -22,7 +22,7 @@ docs/architecture/
 ├── http-config-mapping.md     # NetworkConfig → libcurl 映射设计
 ├── tls-config.md              # TlsConfig 类型设计
 ├── tls-cert-validation.md     # 证书校验流程设计
-├── android-boringssl-build.md # Android BoringSSL 构建集成
+├── android-boringssl-build.md # （⚠️废弃，历史）Android BoringSSL 构建集成 — 已改全平台 OpenSSL
 ├── host-openssl-build.md      # host OpenSSL 构建集成
 ├── network-config.md          # NetworkConfig 实体设计
 ├── retry-policy.md            # 重试策略设计（上层实现）

@@ -4,7 +4,7 @@
 
 ## Overview
 
-跨平台 C++ 网络库，**同步阻塞 API**，axios 风格易用。基于 libcurl，支持 HTTP/1.1 (v1) + WebSocket (v2)。TLS 平台适配：host（macOS/Linux）用 OpenSSL，Android 用 BoringSSL。库内无线程/事件循环/回调；异步由上层用线程池/协程包装。
+跨平台 C++ 网络库，**同步阻塞 API**，axios 风格易用。基于 libcurl，支持 HTTP/1.1 (v1) + WebSocket (v2)。TLS 统一使用 OpenSSL（全平台 host + Android）。库内无线程/事件循环/回调；异步由上层用线程池/协程包装。
 
 ## Getting Started
 
@@ -12,7 +12,7 @@
 
 - Bazel 6.5
 - C++17 编译器（Clang/GCC）
-- libcurl / OpenSSL / BoringSSL（经 Bazel 拉取）
+- libcurl / OpenSSL（经 Bazel 拉取）
 
 ### Add the library to your Bazel project
 

@@ -1,0 +1,10 @@
+# Example applications demonstrating netlib usage.
+package(default_visibility = ["//visibility:public"])
+
+cc_binary(
+    name = "example",
+    srcs = [],
+    deps = [
+        "@cpp_network//src/public:netlib",
+    ],
+)

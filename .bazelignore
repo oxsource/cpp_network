@@ -1,0 +1,3 @@
+# Exclude the consumer_demo workspace from the main Bazel workspace.
+# It is a separate Bazel workspace that consumes cpp_network via local_repository.
+examples/consumer_demo

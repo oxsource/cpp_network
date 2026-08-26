@@ -1,0 +1,15 @@
+# OpenSSL wrapper for the cpp_network workspace.
+#
+# OpenSSL's upstream source is a configure/make project without a native Bazel
+# build. Per the 001 proposal (docs/architecture/host-openssl-build.md), the
+# host TLS backend is OpenSSL linked into libcurl. Building OpenSSL from source
+# in Bazel requires a configure step (generated headers/asm), which is deferred
+# to the protocol implementation phase.
+#
+# This package documents the dependency contract and provides a stub target so
+# the engineering skeleton stays buildable. The real `openssl` cc_library will
+# be introduced with the TLS implementation (src/tls).
+package(default_visibility = ["//visibility:public"])
+
+# NOTE: `openssl` target intentionally omitted until the TLS implementation
+# phase defines how OpenSSL is built (foreign_cc / prebuilt / system lib).

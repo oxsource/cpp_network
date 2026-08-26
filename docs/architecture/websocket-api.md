@@ -15,7 +15,7 @@
 ## 依赖前提
 
 - libcurl ≥ 7.86 启用 WebSocket（`curl_ws_*` API）。
-- TLS：`wss://` 沿用 libcurl SSL 后端（OpenSSL/BoringSSL），与 HTTP 一致（tls-backend-selection.md）。
+- TLS：`wss://` 沿用 libcurl SSL 后端（OpenSSL，全平台），与 HTTP 一致（tls-backend-selection.md）。
 - 复用 `HttpClient` 的 `SyncEngine`（共享 CURLM + curl_multi_poll）与 `NetworkConfig`。
 
 ## 公共 API 设计（v2 草案，同步）

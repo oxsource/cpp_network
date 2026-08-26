@@ -6,13 +6,13 @@
 
 ## Summary
 
-设计并实现跨平台 C++ 网络库，基于 **libcurl** 提供**同步阻塞 API**。HTTP/1.1 (v1) + WebSocket (v2)，TLS 经 Bazel `select()` 构建时选择（host=OpenSSL, Android=BoringSSL）。库仅提供基础网络请求（连接/收发/超时/TLS/代理/连接池），**不含任何事件循环、线程调度、Promise/协程等异步流程抽象**——异步与流程编排完全由上层/调用方控制。
+设计并实现跨平台 C++ 网络库，基于 **libcurl** 提供**同步阻塞 API**。HTTP/1.1 (v1) + WebSocket (v2)，TLS 统一使用 OpenSSL（全平台 host + Android）。库仅提供基础网络请求（连接/收发/超时/TLS/代理/连接池），**不含任何事件循环、线程调度、Promise/协程等异步流程抽象**——异步与流程编排完全由上层/调用方控制。
 
 ## Technical Context
 
 **Language/Version**: C++17
 
-**Primary Dependencies**: libcurl (协议引擎, ≥7.86 for WebSocket), OpenSSL (host TLS 后端), BoringSSL (Android TLS 后端), Google Test (测试), Bazel 6.5 (构建), nlohmann_json (可选, JSON 辅助)
+**Primary Dependencies**: libcurl (协议引擎, ≥7.86 for WebSocket), OpenSSL (TLS 后端, 全平台), Google Test (测试), Bazel 6.5 (构建), nlohmann_json (可选, JSON 辅助)
 
 **Storage**: N/A — network library, no persistent storage.
 
@@ -65,7 +65,7 @@ src/
 ├── tls/                     # TLS 配置映射（libcurl SSL 后端构建时选择）
 │   ├── tls_config.h         # TlsConfig → CURLOPT_SSL_* 映射
 │   ├── openssl/             # (build-only) host
-│   └── boringssl/           # (build-only) Android
+│   └── openssl/           # (build-only) OpenSSL 全平台 TLS 后端
 ├── public/                  # Public API surface
 │   └── include/netlib/
 │       ├── netlib.h         # Umbrella header

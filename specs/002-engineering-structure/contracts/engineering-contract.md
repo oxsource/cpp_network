@@ -8,8 +8,8 @@
 
 ```text
 <repo-root>/
-├── WORKSPACE                # workspace(name = "netlib"); 调用 netlib_setup()
-├── BUILD.bazel              # alias(name="netlib", actual="//src/public:netlib")
+├── WORKSPACE                # workspace(name = "cpp_network"); 调用 netlib_setup()
+├── BUILD.bazel              # alias(name="netlib", actual="@cpp_network//src/public:netlib")
 ├── .bazelversion            # 6.5.0
 ├── .bazelrc                 # 基础配置 + 平台别名 + try-import .user.bazelrc
 ├── .gitignore               # 必须忽略 bazel-*、.user.bazelrc、C++ 产物
@@ -24,7 +24,6 @@
 ├── third_party/
 │   ├── libcurl/{BUILD.bazel, libcurl.bzl}
 │   ├── openssl/{BUILD.bazel, openssl.bzl}
-│   ├── boringssl/{BUILD.bazel, boringssl.bzl}
 │   ├── googletest/BUILD.bazel
 │   └── bazel_skylib/BUILD.bazel
 ├── src/
@@ -47,20 +46,19 @@
 
 | 目标 | 类型 | 要求 |
 |------|------|------|
-| `//:netlib` | alias | 指向 `//src/public:netlib` |
-| `//src/public:netlib` | cc_library | 静态库；hdrs 暴露 `public/include/netlib/` |
-| `//src/public:netlib_shared` | cc_binary(linkshared) | 共享库；`-DNETLIB_SHARED_LIBRARY` + `NETLIB_API` 导出 |
-| `//src/tls:tls` | cc_library | 经 `netlib_select` 选择 TLS 后端 |
-| `//src/tests:smoke_test` | cc_test | 冒烟测试，`bazel test //...` 必过 |
-| `@libcurl//:libcurl_openssl` | cc_library | host 变体（USE_OPENSSL） |
-| `@libcurl//:libcurl_boringssl` | cc_library | android 变体（BoringSSL 后端） |
+| `//:netlib` | alias | 指向 `@cpp_network//src/public:netlib` |
+| `@cpp_network//src/public:netlib` | cc_library | 静态库；hdrs 暴露 `public/include/netlib/` |
+| `@cpp_network//src/public:netlib_shared` | cc_binary(linkshared) | 共享库；`-DNETLIB_SHARED_LIBRARY` + `NETLIB_API` 导出 |
+| `@cpp_network//src/tls:tls` | cc_library | 经 `netlib_select` 选择 TLS 后端 |
+| `@cpp_network//src/tests:smoke_test` | cc_test | 冒烟测试，`bazel test //...` 必过 |
+| `@libcurl//:libcurl_openssl` | cc_library | OpenSSL 后端变体（USE_OPENSSL，全平台） |
 | `//examples/consumer_demo:demo` | cc_binary | local_repository 消费验证 |
 
 ## 依赖引导契约（netlib_deps.bzl）
 
 - `netlib_setup()` 幂等：每个 `http_archive` 用 `native.existing_rule(name)` 守卫。
 - 每个依赖声明必须含：`name`、`sha256`、`urls`（或 `strip_prefix`）。
-- 依赖清单（版本锁定）：bazel_skylib 1.6.1、curl ≥7.86、openssl 3.x、boringssl 固定 commit、googletest 1.14.0。
+- 依赖清单（版本锁定）：bazel_skylib 1.6.1、curl ≥7.86、openssl 3.x、googletest 1.14.0。
 
 ## 平台契约
 

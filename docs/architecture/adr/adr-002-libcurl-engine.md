@@ -6,11 +6,11 @@
 
 ## Context
 
-需要 HTTP/1.1（v1）+ WebSocket（v2）协议支持，并满足跨平台（macOS/Linux/Android）、TLS 平台适配（OpenSSL/BoringSSL）、连接池复用、重定向/代理/流式等需求。选择协议引擎方案。
+需要 HTTP/1.1（v1）+ WebSocket（v2）协议支持，并满足跨平台（macOS/Linux/Android）、TLS 平台适配（全平台 OpenSSL）、连接池复用、重定向/代理/流式等需求。选择协议引擎方案。
 
 ## Decision
 
-使用 **libcurl**（≥7.86，WebSocket 支持）作为协议引擎。库封装 libcurl 提供同步 API。TLS 经 libcurl 构建时 SSL 后端选择（host=OpenSSL, Android=BoringSSL）。HTTP 解析、连接池、重定向、代理、chunked、WebSocket 全部委托 libcurl。
+使用 **libcurl**（≥7.86，WebSocket 支持）作为协议引擎。库封装 libcurl 提供同步 API。TLS 统一使用 OpenSSL（3.x LTS，全平台 host + Android）。HTTP 解析、连接池、重定向、代理、chunked、WebSocket 全部委托 libcurl。
 
 ## Alternatives Considered
 
@@ -24,4 +24,4 @@
 
 - 库本体很薄：HttpClient 同步 API + SyncEngine 共享 CURLM 驱动 + TlsConfig 映射。
 - libcurl 为私有实现依赖，其类型绝不进入公共 API（FR-016）。
-- 依赖 libcurl 版本演进（WebSocket 需 7.86+）；BoringSSL/OpenSSL 版本锁定见 host/android 构建文档。
+- 依赖 libcurl 版本演进（WebSocket 需 7.86+）；OpenSSL 版本锁定见 host-openssl-build.md。

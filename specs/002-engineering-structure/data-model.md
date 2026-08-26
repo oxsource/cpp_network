@@ -6,9 +6,9 @@
 
 ### Bazel 工作区（WORKSPACE）
 
-- **Purpose**: 工程构建根；声明 workspace 名 `netlib`，经 `netlib_setup()` 引导外部依赖。
+- **Purpose**: 工程构建根；声明 workspace 名 `cpp_network`，经 `netlib_setup()` 引导外部依赖。
 - **属性**:
-  - `name: string` = `"netlib"` — workspace 唯一标识（跨工作区引用用 `@netlib//...`）。
+  - `name: string` = `"cpp_network"` — workspace 唯一标识（内部依赖引用统一用 `@cpp_network//...` 前缀，如 `@cpp_network//src/public:netlib`）。
   - `setup: callable` = `netlib_setup()` — 幂等依赖引导。
 - **关系**: 根 `BUILD.bazel` 提供 `alias //:netlib`；`examples/consumer_demo` 经 `local_repository` 引用。
 - **校验**: 若 `netlib_setup` 重复调用不报错（`existing_rule` 守卫）；WORKSPACE 与 `.bazelversion`(6.5.0) 匹配。
@@ -27,16 +27,15 @@
 - **Purpose**: 幂等拉取全部外部依赖的单一入口。
 - **属性**:
   - 每个依赖: `name`、`version/commit`、`sha256`、`urls`。
-- **关系**: 被 `WORKSPACE` 调用；拉取的仓库（@curl/@openssl/@boringssl/@googletest/@bazel_skylib）被 `third_party/` BUILD 引用。
+- **关系**: 被 `WORKSPACE` 调用；拉取的仓库（@curl/@openssl/@googletest/@bazel_skylib）被 `third_party/` BUILD 引用。
 - **校验**: 每个依赖用 `native.existing_rule(name)` 守卫；重复调用静默跳过。
 
 ### third_party 封装
 
 - **Purpose**: 每个外部依赖的独立封装（BUILD + bzl），隔离版本与平台差异。
 - **属性**:
-  - `libcurl`: `libcurl_openssl`（host）/ `libcurl_boringssl`（android）两目标。
-  - `openssl`: `:ssl` + `:crypto`（host）。
-  - `boringssl`: re-export `@boringssl//:ssl` + `@boringssl//:crypto`（android）。
+  - `libcurl`: `libcurl_openssl`（USE_OPENSSL，全平台）目标。
+  - `openssl`: `:ssl` + `:crypto`（全平台 TLS）。
   - `googletest`: re-export gtest/gtest_main。
   - `bazel_skylib`: re-export（或直接用 `@bazel_skylib//...`）。
 - **关系**: `src/tls` 经 `netlib_select` 选择 libcurl 后端变体 + 对应 SSL 库。

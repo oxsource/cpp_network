@@ -1,0 +1,15 @@
+# TLS configuration layer for the netlib library.
+#
+# OpenSSL (3.x LTS) is the TLS backend on ALL platforms (host macOS/Linux and
+# Android). No build-time backend selection is needed. The concrete `tls`
+# cc_library (TlsConfig type + CURLOPT_SSL_* mapping, linked through libcurl's
+# OpenSSL backend) is introduced in the TLS implementation phase, which also
+# defines the third_party/libcurl and third_party/openssl cc_library targets.
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "tls",
+    hdrs = [],
+    srcs = [],
+    deps = [],
+)

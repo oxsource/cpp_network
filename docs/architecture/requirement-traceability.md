@@ -10,7 +10,7 @@
 |----|------|--------------|------|
 | FR-001 | HttpClient 接口（GET/POST/.../Send） | [http-client-api.md](../architecture/http-client-api.md) | ✅ |
 | FR-002 | HTTP/1.1 | [http-transfer-lifecycle.md](../architecture/http-transfer-lifecycle.md)、libcurl 引擎 | ✅ |
-| FR-003 | 平台无关 TLS 抽象（OpenSSL/BoringSSL） | [tls-backend-selection.md](../architecture/tls-backend-selection.md) | ✅ |
+| FR-003 | 平台无关 TLS 抽象（全平台 OpenSSL） | [tls-backend-selection.md](../architecture/tls-backend-selection.md) | ✅ |
 | FR-004 | timeout 配置（连接/读写/总） | [http-config-mapping.md](../architecture/http-config-mapping.md) | ✅ |
 | FR-005 | 自定义 headers | [http-request.md](../architecture/http-request.md) | ✅ |
 | FR-006 | 请求体 + Content-Type | [http-request.md](../architecture/http-request.md) | ✅ |
@@ -48,7 +48,7 @@
 | US | 故事 | 覆盖文档 |
 |----|------|----------|
 | US1 (P1) | HTTP 请求/响应 | http-client-api / http-request / http-response / http-transfer-lifecycle |
-| US2 (P1) | 平台 TLS | tls-backend-selection / tls-config / tls-cert-validation / host-openssl-build / android-boringssl-build |
+| US2 (P1) | 平台 TLS（全平台 OpenSSL） | tls-backend-selection / tls-config / tls-cert-validation / host-openssl-build |
 | US3 (P2) | 网络配置 | network-config / retry-policy / proxy-config / connection-pool / http-config-mapping |
 | US4 (P3) | WebSocket（未来） | websocket-api / websocket-message-flow / protocol-extension |
 

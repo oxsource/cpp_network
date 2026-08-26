@@ -1,0 +1,5 @@
+alias(
+    name = "netlib",
+    actual = "@cpp_network//src/public:netlib",
+    visibility = ["//visibility:public"],
+)

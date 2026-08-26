@@ -69,7 +69,7 @@
   - `client_certificate: optional<Certificate>` — mutual TLS (→ `CURLOPT_SSLCERT`/`CURLOPT_SSLKEY`).
   - `sni_hostname: optional<string>` — SNI override.
 - **Validation**: verify_mode required; CA certs must be PEM/DER parseable.
-- **Note**: The actual TLS backend (OpenSSL on host, BoringSSL on Android) is selected when libcurl is built (via Bazel `select()`). No runtime `TlsAdapter` interface is required.
+- **Note**: The TLS backend is OpenSSL on all platforms (host and Android), linked through libcurl. No runtime `TlsAdapter` interface or build-time `select()` is required.
 
 ### ConnectionPool (delegated to libcurl)
 

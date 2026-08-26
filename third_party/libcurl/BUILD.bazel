@@ -1,0 +1,15 @@
+# libcurl wrapper for the cpp_network workspace.
+#
+# libcurl is a configure/make project without a native Bazel build. Per the 001
+# proposal (docs/architecture/host-openssl-build.md), libcurl is built from
+# source with a platform-specific curl_config.h and linked against OpenSSL as
+# the TLS backend on ALL platforms (host macOS/Linux and Android).
+#
+# Building libcurl in Bazel requires generating curl_config_<platform>.h and a
+# hand-written BUILD (deferred to the protocol implementation phase, per the 001
+# proposal). This package documents the target contract below; the actual
+# cc_library definition lands with the TLS/HTTP implementation.
+package(default_visibility = ["//visibility:public"])
+
+# Contract target (not yet defined — introduced in the TLS implementation phase):
+#   :libcurl_openssl — USE_OPENSSL variant, deps @openssl//:ssl + @openssl//:crypto

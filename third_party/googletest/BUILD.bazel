@@ -1,0 +1,14 @@
+# Re-export of the Google Test external dependency.
+# The dependency itself is fetched by netlib_deps.bzl; targets are consumed
+# via @googletest//:gtest and @googletest//:gtest_main.
+package(default_visibility = ["//visibility:public"])
+
+alias(
+    name = "gtest",
+    actual = "@googletest//:gtest",
+)
+
+alias(
+    name = "gtest_main",
+    actual = "@googletest//:gtest_main",
+)

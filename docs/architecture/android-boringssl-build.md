@@ -1,8 +1,10 @@
-# Android BoringSSL + libcurl Build Integration
+# Android BoringSSL + libcurl Build Integration（⚠️ 已废弃）
 
-**Branch**: `001-cpp-network-library` | **Date**: 2026-08-26
+> **DEPRECATED（2026-08-26）**：用户决策**全平台统一使用 OpenSSL**，Android 不再使用 BoringSSL。本文档仅保留作历史记录；Android 的 TLS 构建统一走 OpenSSL（见 [host-openssl-build.md](host-openssl-build.md) 及 [tls-backend-selection.md](tls-backend-selection.md) 修订版）。
 
-**对应需求**: FR-003（Android 用 BoringSSL）、FR-014（Android 构建）、FR-015（Google 风格）
+**Branch**: `001-cpp-network-library` | **Date**: 2026-08-26（废弃标注）
+
+**对应需求**: （原）FR-003（Android 用 BoringSSL）— 已修订为全平台 OpenSSL
 
 **用户故事**: US2 (P1) — Platform-Specific TLS Adapter
 
@@ -10,7 +12,7 @@
 
 ## Overview
 
-设计 Android (arm64, API 24+) 平台上 libcurl + BoringSSL 的构建集成方案，经 Bazel `select()` 触发，交付 `@libcurl//:libcurl_boringssl` 目标。目标：Android 上 HTTPS 使用 BoringSSL 作为 SSL 后端，公共 API 无任何 Android 特有代码。
+（历史）原设计：Android (arm64, API 24+) 平台上 libcurl + BoringSSL 的构建集成方案，经 Bazel `select()` 触发，交付 `@libcurl//:libcurl_boringssl` 目标。**已被全平台 OpenSSL 方案取代，以下内容仅作参考。**
 
 ## 方案选择
 

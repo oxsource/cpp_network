@@ -1,0 +1,11 @@
+# Consumer demo binary demonstrating external consumption of the netlib library
+# via @cpp_network//:netlib.
+package(default_visibility = ["//visibility:public"])
+
+cc_binary(
+    name = "demo",
+    srcs = ["main.cc"],
+    deps = [
+        "@cpp_network//:netlib",
+    ],
+)

@@ -1,0 +1,26 @@
+# Public API surface of the netlib library.
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "netlib",
+    hdrs = [
+        "include/netlib/netlib.h",
+        "include/netlib/netlib_export.h",
+    ],
+    includes = ["include"],
+    deps = [
+        "@cpp_network//src/http:http",
+        "@cpp_network//src/websocket:websocket",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+cc_binary(
+    name = "netlib_shared",
+    srcs = [],
+    linkshared = True,
+    linkstatic = True,
+    defines = ["NETLIB_SHARED_LIBRARY"],
+    deps = [":netlib"],
+    visibility = ["//visibility:public"],
+)

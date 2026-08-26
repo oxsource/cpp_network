@@ -30,7 +30,7 @@ A C++ developer integrates the network library into their application. They conf
 
 ### User Story 2 - Platform-Specific TLS Adapter (Priority: P1)
 
-A developer builds an application that runs on macOS (host) and Android. The library automatically uses OpenSSL on macOS and BoringSSL on Android, without any code changes by the developer. HTTPS requests are secure on both platforms.
+A developer builds an application that runs on macOS (host) and Android. The library automatically uses OpenSSL on both platforms (all-platform unified TLS), without any code changes by the developer. HTTPS requests are secure on both platforms.
 
 **Why this priority**: TLS is essential for secure communication. Platform-specific TLS adaptation is a core requirement that differentiates this library from simple HTTP libraries.
 
@@ -40,7 +40,7 @@ A developer builds an application that runs on macOS (host) and Android. The lib
 
 1. **Given** the library is built on macOS, **When** an HTTPS request is sent to "https://httpbin.org/get", **Then** the connection succeeds using OpenSSL as the TLS backend and the response is received with correct SSL certificate validation.
 
-2. **Given** the library is built on Android, **When** an HTTPS request is sent to "https://httpbin.org/get", **Then** the connection succeeds using BoringSSL as the TLS backend and the response is received with correct SSL certificate validation.
+2. **Given** the library is built on Android, **When** an HTTPS request is sent to "https://httpbin.org/get", **Then** the connection succeeds using OpenSSL as the TLS backend (unified across all platforms) and the response is received with correct SSL certificate validation.
 
 3. **Given** an HTTPS server with a self-signed certificate, **When** the developer configures the client to skip certificate verification, **Then** the connection succeeds; **When** the developer does not configure certificate skipping, **Then** the connection fails with a TLS error.
 
@@ -95,7 +95,7 @@ A developer needs bidirectional real-time communication. After the initial HTTP 
 
 - **FR-001**: The library MUST provide an HttpClient interface that allows developers to send HTTP requests (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS) and receive responses.
 - **FR-002**: The library MUST support HTTP/1.1 protocol.
-- **FR-003**: The library MUST provide a platform-agnostic TLS abstraction layer that supports different TLS backends (OpenSSL on host platforms, BoringSSL on Android).
+- **FR-003**: The library MUST provide a platform-agnostic TLS abstraction layer that supports OpenSSL as the TLS backend on all platforms (host and Android).
 - **FR-004**: The library MUST allow developers to configure connection timeouts, read/write timeouts, and total request timeouts.
 - **FR-005**: The library MUST support setting custom HTTP headers on requests and reading response headers.
 - **FR-006**: The library MUST support sending request bodies (for POST, PUT, PATCH) with configurable Content-Type.
@@ -121,7 +121,7 @@ A developer needs bidirectional real-time communication. After the initial HTTP 
 - **HttpRequest**: Represents an outgoing HTTP request. Contains HTTP method, URL, headers, and optional body. Immutable after construction.
 - **HttpResponse**: Represents an incoming HTTP response. Contains status code, status text, headers, and response body. Provides access to body as string, bytes, or stream.
 - **NetworkConfig**: Configuration object for the HttpClient. Contains timeout settings, retry policy, proxy settings, TLS configuration, and connection pool settings.
-- **TlsConfig**: TLS configuration for the HttpClient (verify mode, CA certificates, client certificate, SNI). Maps to libcurl SSL options; the actual TLS backend (OpenSSL host / BoringSSL Android) is selected at build time.
+- **TlsConfig**: TLS configuration for the HttpClient (verify mode, CA certificates, client certificate, SNI). Maps to libcurl SSL options; the TLS backend is OpenSSL on all platforms.
 - **WebSocket**: (Future) Represents an active WebSocket connection. Provides synchronous methods for sending messages, receiving messages, and closing the connection.
 - **ConnectionPool**: Manages a pool of persistent TCP/TLS connections to reduce connection establishment overhead. Managed internally by libcurl; exposes tuning knobs (max connections per host, keep-alive duration).
 
@@ -151,13 +151,13 @@ A developer needs bidirectional real-time communication. After the initial HTTP 
 ## Assumptions
 
 - Host platforms include macOS (x86_64 and arm64) and Linux (x86_64 and aarch64).
-- Android platform targets API level 24 or higher (for BoringSSL compatibility).
+- Android platform targets API level 24 or higher.
 - iOS and Windows platforms are out of scope for v1.
 - HTTP/2 support is not required for v1; only HTTP/1.1 is needed.
 - The library is a client-side library only; no server functionality is required.
 - Developers will use the library from C++17 or later.
 - The project follows the same engineering conventions as graph_runtime: Bazel platform definitions, cc_library/cc_test/cc_binary targets, platform-specific select(), and visibility-controlled packages.
-- External dependencies (OpenSSL, BoringSSL, zlib for compression) will be managed via Bazel WORKSPACE rules or http_archive.
+- External dependencies (OpenSSL, zlib for compression) will be managed via Bazel WORKSPACE rules or http_archive.
 - The library will be delivered as both a static library and a shared library, following the graph_runtime pattern.
 - The library does not include built-in logging, metrics, or tracing. All error information is communicated via return values and error codes.
 - The library does not manage threads, run an event loop, or implement Promise/coroutine abstractions. It provides a synchronous blocking API; async/flow orchestration is the user's responsibility.
