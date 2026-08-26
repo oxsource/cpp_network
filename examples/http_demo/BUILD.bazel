@@ -1,0 +1,11 @@
+# HTTP demo binary exercising real network requests (GET / POST) through the
+# netlib synchronous Client API.
+package(default_visibility = ["//visibility:public"])
+
+cc_binary(
+    name = "http_demo",
+    srcs = ["main.cc"],
+    deps = [
+        "@cpp_network//:netlib",
+    ],
+)

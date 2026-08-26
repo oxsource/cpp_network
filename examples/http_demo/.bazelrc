@@ -1,0 +1,9 @@
+# The example lives in its own Bazel workspace, so it does not inherit the
+# root .bazelrc; mirror the required build settings here.
+build --cxxopt=-std=c++17
+build --host_cxxopt=-std=c++17
+build --enable_platform_specific_config
+
+build:macos_arm64 --platforms=//platforms:macos_arm64
+
+try-import %workspace%/.user.bazelrc

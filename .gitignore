@@ -11,6 +11,8 @@ examples/consumer_demo/bazel-*
 examples/consumer_demo/bazel-bin
 examples/consumer_demo/bazel-out
 examples/consumer_demo/bazel-testlogs
+# Bazel (http_demo 独立工作区产物)
+examples/http_demo/bazel-*
 
 # C/C++
 build/
