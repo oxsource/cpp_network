@@ -1,6 +1,8 @@
 #include "http/options.h"
 
+#include <cstdint>
 #include <cstring>
+#include <limits>
 
 namespace cpp_network {
 namespace http {
@@ -10,6 +12,9 @@ namespace {
 bool ContainsCrlf(const std::string& s) {
   return s.find('\r') != std::string::npos || s.find('\n') != std::string::npos;
 }
+
+// Largest valid TCP/UDP port number (port fields are uint16_t on the wire).
+constexpr int kMaxPort = std::numeric_limits<std::uint16_t>::max();
 
 }  // namespace
 
@@ -32,7 +37,7 @@ Result<void> Options::Validate() const {
         Error(ErrorCode::kInvalidArgument, "local address must not contain CRLF"));
   }
   if (local_port_.has_value() &&
-      (*local_port_ < 0 || *local_port_ > 65535)) {
+      (*local_port_ < 0 || *local_port_ > kMaxPort)) {
     return Result<void>::Err(
         Error(ErrorCode::kInvalidArgument, "local port out of range"));
   }

@@ -55,6 +55,17 @@ class CPP_NETWORK_HTTP_EXPORT Tls {
   // inline PEM material must look well-formed.
   Result<void> Validate() const;
 
+  // True if value carries inline PEM material ("-----BEGIN" marker) as
+  // opposed to a file path. Shared by validation and the curl mapping layer
+  // to decide between *_BLOB and path-based CURLOPTs.
+  static bool IsInlinePem(const std::string& value);
+
+  // Materializes inline PEM into a temp file (created under $TMPDIR or /tmp)
+  // for libcurl builds whose runtime rejects *_BLOB options. Results are
+  // cached per content for the process lifetime, so the returned pointer
+  // stays valid across transfers. Returns nullptr on I/O failure.
+  static const char* MaterializePem(const std::string& pem);
+
  private:
   VerifyMode verify_mode_ = VerifyMode::kVerifyPeer;
   std::optional<std::string> ca_pem_;

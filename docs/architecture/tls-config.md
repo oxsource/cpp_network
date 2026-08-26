@@ -65,9 +65,9 @@ class Tls {
 | 客户端证书/私钥为文件路径 | `CURLOPT_SSLCERT` / `CURLOPT_SSLKEY` |
 | `sni` | `CURLOPT_SNI_HOSTNAME`（编译期 `#ifdef` 保护） |
 
-### Blob 运行时回退（MaterializePem）
+### Blob 运行时回退（Tls::MaterializePem）
 
-部分系统 libcurl（如 macOS 系统库）在头文件中声明了 `*_BLOB` 选项，但运行时对未支持的选项返回 `CURLE_FAILED_INIT`。因此映射层采用"先 blob、后临时文件"的两级策略：临时文件按 PEM 内容缓存（进程生命周期内有效，保证路径跨传输可用），写入 `$TMPDIR/netlib_pem_XXXXXX`。
+部分系统 libcurl（如 macOS 系统库）在头文件中声明了 `*_BLOB` 选项，但运行时对未支持的选项返回 `CURLE_FAILED_INIT`。内联 PEM 的判定（`Tls::IsInlinePem`）与物化（`Tls::MaterializePem`）均由 `Tls` 静态方法提供，映射层采用"先 blob、后临时文件"的两级策略：临时文件按 PEM 内容缓存（进程生命周期内有效，保证路径跨传输可用），写入 `$TMPDIR/cpp_network_pem_XXXXXX`。
 
 ## 平台差异收敛
 

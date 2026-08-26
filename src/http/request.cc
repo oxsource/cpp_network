@@ -1,10 +1,14 @@
 #include "http/request.h"
 
+#include "detail/http_constants.h"
+
 #include <cctype>
 #include <cstring>
 
 namespace cpp_network {
 namespace http {
+
+using detail::HttpConstants;
 
 namespace {
 
@@ -14,7 +18,8 @@ bool ContainsCrlf(const std::string& s) {
 
 bool LooksLikeAbsoluteUrl(const std::string& url) {
   // Requires a scheme (http:// or https://).
-  return url.rfind("http://", 0) == 0 || url.rfind("https://", 0) == 0;
+  return url.rfind(HttpConstants::kHttpScheme, 0) == 0 ||
+         url.rfind(HttpConstants::kHttpsScheme, 0) == 0;
 }
 
 bool HeaderNameEquals(const std::string& a, const char* b_lower) {
@@ -28,7 +33,7 @@ bool HeaderNameEquals(const std::string& a, const char* b_lower) {
 }
 
 bool IsContentType(const std::string& name) {
-  return HeaderNameEquals(name, "content-type");
+  return HeaderNameEquals(name, HttpConstants::kLowerContentTypeHeader);
 }
 
 }  // namespace
@@ -63,7 +68,8 @@ Request::Builder& Request::Builder::Body(const std::string& body) {
     }
   }
   if (!has_ct) {
-    headers_.emplace_back("Content-Type", "text/plain");
+    headers_.emplace_back(HttpConstants::kContentTypeHeader,
+                        HttpConstants::kTextPlainMime);
   }
   return *this;
 }
@@ -74,11 +80,12 @@ Request::Builder& Request::Builder::JsonBody(const std::string& json) {
   // Set or override Content-Type: application/json.
   for (auto& [name, value] : headers_) {
     if (IsContentType(name)) {
-      value = "application/json";
+      value = HttpConstants::kApplicationJsonMime;
       return *this;
     }
   }
-  headers_.emplace_back("Content-Type", "application/json");
+  headers_.emplace_back(HttpConstants::kContentTypeHeader,
+                        HttpConstants::kApplicationJsonMime);
   return *this;
 }
 

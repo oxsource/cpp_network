@@ -1,6 +1,13 @@
 #include "http/tls.h"
 
+#include <fcntl.h>
+#include <unistd.h>
+
+#include <cstdlib>
+#include <map>
+#include <mutex>
 #include <string>
+#include <vector>
 
 namespace cpp_network {
 namespace http {
@@ -9,10 +16,6 @@ namespace {
 
 constexpr const char* kBeginMarker = "-----BEGIN";
 constexpr const char* kEndMarker = "-----END";
-
-bool LooksLikePem(const std::string& value) {
-  return value.find(kBeginMarker) != std::string::npos;
-}
 
 bool HasMatchingEnd(const std::string& value) {
   return value.find(kEndMarker) != std::string::npos;
@@ -35,7 +38,7 @@ Result<void> Tls::Validate() const {
     return Invalid("ca_file and ca_certificate are mutually exclusive");
   }
   if (ca_pem_.has_value()) {
-    if (!LooksLikePem(*ca_pem_) || !HasMatchingEnd(*ca_pem_)) {
+    if (!Tls::IsInlinePem(*ca_pem_) || !HasMatchingEnd(*ca_pem_)) {
       return Invalid("ca_certificate does not look like valid PEM");
     }
   } else if (ca_file_.has_value() && ca_file_->empty()) {
@@ -46,8 +49,8 @@ Result<void> Tls::Validate() const {
         "client certificate and key must be configured together (mTLS)");
   }
   if (client_cert_.has_value()) {
-    const bool cert_is_pem = LooksLikePem(*client_cert_);
-    const bool key_is_pem = LooksLikePem(*client_key_);
+    const bool cert_is_pem = Tls::IsInlinePem(*client_cert_);
+    const bool key_is_pem = Tls::IsInlinePem(*client_key_);
     if (client_cert_->empty() || client_key_->empty()) {
       return Invalid("client certificate/key must not be empty");
     }
@@ -70,6 +73,42 @@ Result<void> Tls::Validate() const {
     }
   }
   return Result<void>::Ok(Error());
+}
+
+// static
+bool Tls::IsInlinePem(const std::string& value) {
+  return value.find(kBeginMarker) != std::string::npos;
+}
+
+// static
+const char* Tls::MaterializePem(const std::string& pem) {
+  static std::mutex mutex;
+  static std::map<std::string, std::string> cache;
+  std::lock_guard<std::mutex> lock(mutex);
+  auto it = cache.find(pem);
+  if (it != cache.end()) {
+    return it->second.c_str();
+  }
+
+  const char* tmpdir = std::getenv("TMPDIR");
+  std::string tmpl =
+      (tmpdir != nullptr && tmpdir[0] != '\0' ? std::string(tmpdir)
+                                              : std::string("/tmp")) +
+      "/cpp_network_pem_XXXXXX";
+  std::vector<char> buf(tmpl.begin(), tmpl.end());
+  buf.push_back('\0');
+  int fd = ::mkstemp(buf.data());
+  if (fd < 0) {
+    return nullptr;
+  }
+  ssize_t written = ::write(fd, pem.data(), pem.size());
+  ::close(fd);
+  if (written < 0 || static_cast<std::size_t>(written) != pem.size()) {
+    ::unlink(buf.data());
+    return nullptr;
+  }
+  // The map node keeps a stable copy; the returned pointer remains valid.
+  return cache.emplace(pem, std::string(buf.data())).first->second.c_str();
 }
 
 }  // namespace http

@@ -1,13 +1,9 @@
 #include "curl_mapping.h"
 
+#include "http_constants.h"
+
 #include <curl/curl.h>
 
-#include <fcntl.h>
-#include <unistd.h>
-
-#include <cstdlib>
-#include <map>
-#include <mutex>
 #include <string>
 #include <vector>
 
@@ -20,58 +16,21 @@ namespace {
 const char* MethodToString(Method method) {
   switch (method) {
     case Method::kGet:
-      return "GET";
+      return HttpConstants::kMethodGet;
     case Method::kPost:
-      return "POST";
+      return HttpConstants::kMethodPost;
     case Method::kPut:
-      return "PUT";
+      return HttpConstants::kMethodPut;
     case Method::kDelete:
-      return "DELETE";
+      return HttpConstants::kMethodDelete;
     case Method::kPatch:
-      return "PATCH";
+      return HttpConstants::kMethodPatch;
     case Method::kHead:
-      return "HEAD";
+      return HttpConstants::kMethodHead;
     case Method::kOptions:
-      return "OPTIONS";
+      return HttpConstants::kMethodOptions;
   }
-  return "GET";
-}
-
-}  // namespace
-
-namespace {
-
-// Some system libcurl builds (e.g. macOS) expose the *_BLOB options in their
-// headers but reject them at runtime with CURLE_FAILED_INIT. As a fallback,
-// inline PEM material is materialized into a temp file (cached per content)
-// and passed via path-based options instead. Temp files persist for the
-// process lifetime so paths stay valid across transfers.
-const char* MaterializePem(const std::string& pem) {
-  static std::mutex mutex;
-  static std::map<std::string, std::string> cache;
-  std::lock_guard<std::mutex> lock(mutex);
-  auto it = cache.find(pem);
-  if (it != cache.end()) {
-    return it->second.c_str();
-  }
-
-  const char* tmpdir = std::getenv("TMPDIR");
-  std::string tmpl = (tmpdir != nullptr && tmpdir[0] != '\0' ? std::string(tmpdir) : std::string("/tmp")) +
-                     "/netlib_pem_XXXXXX";
-  std::vector<char> buf(tmpl.begin(), tmpl.end());
-  buf.push_back('\0');
-  int fd = ::mkstemp(buf.data());
-  if (fd < 0) {
-    return nullptr;
-  }
-  ssize_t written = ::write(fd, pem.data(), pem.size());
-  ::close(fd);
-  if (written < 0 || static_cast<std::size_t>(written) != pem.size()) {
-    ::unlink(buf.data());
-    return nullptr;
-  }
-  // The map node keeps a stable copy; the returned pointer remains valid.
-  return cache.emplace(pem, std::string(buf.data())).first->second.c_str();
+  return HttpConstants::kMethodGet;
 }
 
 }  // namespace
@@ -251,7 +210,7 @@ Error ApplyEasyOptions(CURL* easy, const Request& req, const Options& options,
     applied = (rc == CURLE_OK);
 #endif
     if (!applied) {
-      const char* ca_path = MaterializePem(*tls.ca_pem());
+      const char* ca_path = Tls::MaterializePem(*tls.ca_pem());
       if (ca_path == nullptr) {
         return Error(ErrorCode::kInvalidArgument,
                      "failed to materialize inline CA PEM for curl without "
@@ -266,13 +225,11 @@ Error ApplyEasyOptions(CURL* easy, const Request& req, const Options& options,
     }
   }
   if (tls.client_cert().has_value() && tls.client_key().has_value()) {
-    // Inline PEM material is detected by the "-----BEGIN" marker and passed
-    // via *_BLOB options (runtime curl >= 7.71) with a temp-file fallback;
-    // anything else is treated as a file path.
-    const bool cert_is_pem =
-        tls.client_cert()->find("-----BEGIN") != std::string::npos;
-    const bool key_is_pem =
-        tls.client_key()->find("-----BEGIN") != std::string::npos;
+    // Inline PEM material (detected by Tls) is passed via *_BLOB options
+    // (runtime curl >= 7.71) with a temp-file fallback; anything else is
+    // treated as a file path.
+    const bool cert_is_pem = Tls::IsInlinePem(*tls.client_cert());
+    const bool key_is_pem = Tls::IsInlinePem(*tls.client_key());
 
     bool cert_applied = false;
     bool key_applied = false;
@@ -298,9 +255,9 @@ Error ApplyEasyOptions(CURL* easy, const Request& req, const Options& options,
     }
 
     const char* cert_path =
-        cert_is_pem ? MaterializePem(*tls.client_cert())
+        cert_is_pem ? Tls::MaterializePem(*tls.client_cert())
                     : tls.client_cert()->c_str();
-    const char* key_path = key_is_pem ? MaterializePem(*tls.client_key())
+    const char* key_path = key_is_pem ? Tls::MaterializePem(*tls.client_key())
                                       : tls.client_key()->c_str();
     if (cert_path == nullptr || key_path == nullptr) {
       return Error(ErrorCode::kInvalidArgument,

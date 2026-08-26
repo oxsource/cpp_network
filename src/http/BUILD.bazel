@@ -30,6 +30,7 @@ cc_library(
 cc_library(
     name = "request",
     srcs = ["request.cc"],
+    hdrs = ["detail/http_constants.h"],
     deps = [
         PUBLIC_HEADERS,
         ":error",
@@ -62,7 +63,7 @@ cc_library(
 cc_library(
     name = "engine",
     srcs = ["engine.cc", "detail/curl_mapping.cc"],
-    hdrs = ["engine.h", "detail/curl_mapping.h"],
+    hdrs = ["engine.h", "detail/curl_mapping.h", "detail/http_constants.h"],
     deps = [
         PUBLIC_HEADERS,
         ":error",
