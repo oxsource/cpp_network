@@ -1,6 +1,6 @@
 # Host OpenSSL + libcurl Build Integration
 
-> **状态（2026-08-26，spec 003 实现核对）**：本文"方案 A（源码构建 OpenSSL/libcurl）"的决策**未随 spec 003 落地**。当前实现直接 `linkopts = ["-lcurl"]` 链接**系统 libcurl**（TLS 后端随系统库，macOS 为 SecureTransport 或系统 curl 的后端）；`third_party/openssl` 与 `third_party/libcurl` 仅为注释占位、无可依赖目标。源码构建（可复现、版本锁定）仍是后续任务目标。blob 类 CURLOPT 在部分系统 libcurl 上运行时不可用，映射层已有临时文件回退（见 tls-config.md）。
+> **状态（2026-08-26 第二次修订，ADR-003）**：源码构建 OpenSSL/libcurl 从"后续任务"降级为**可选项**——仅当未来需要锁定特定 TLS 后端/版本（如 Android 集成或依赖 OpenSSL 特有行为）时再评估。当前各平台链接系统 libcurl 即满足验收标准（HTTPS + 自定义证书能力）；macOS 系统 curl 的 SecureTransport 后端属预期状态。`third_party/openssl` 与 `third_party/libcurl` 维持占位。blob 类 CURLOPT 在部分系统 libcurl 上运行时不可用，映射层已有临时文件回退（见 tls-config.md）。
 
 **Branch**: `001-cpp-network-library` | **Date**: 2026-08-26
 
