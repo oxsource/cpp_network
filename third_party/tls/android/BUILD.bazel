@@ -38,7 +38,20 @@ cp tls-install/lib/libcurl.a "$(RULEDIR)/lib/libcurl.a"
     ]),
     message = "cross-building OpenSSL+libcurl for android_arm64",
     tags = ["local", "manual"],
-    target_compatible_with = ["@platforms//os:android"],
+)
+
+# Single-label handoff of the full installed tree for other packages'
+# genrules (specs/006: libwebsockets builds against this tree).
+genrule(
+    name = "bundle_tar",
+    srcs = [":build_tls"],
+    outs = ["tls-install.tar.gz"],
+    cmd = """
+set -e
+cd "$(RULEDIR)" && tar -czf tls-install.tar.gz lib include
+""",
+    message = "packing android TLS bundle tree",
+    tags = ["local", "manual"],
 )
 
 cc_library(

@@ -1,1 +1,6 @@
-exports_files(["build-tls.sh"])
+exports_files(
+    [
+        "build-tls.sh",
+        "build-lws.sh",
+    ],
+)

@@ -42,3 +42,9 @@ build:android_arm64 --action_env=ANDROID_NDK_HOME
 # macos_x86_64 config requests real x86_64 third-party objects via an -arch
 # cross compile on any macOS machine (specs/005 US3 build-level verification).
 build:macos_x86_64 --action_env=TLS_HOST_ARCH=x86_64
+
+# macOS C++ dynamic mode builds cc_library deps as -undefined dynamic_lookup
+# dylibs; third-party static archives (lws/curl/OpenSSL objects inside the
+# TLS bundles) cannot resolve at load time -> NULL-call crashes (specs/006
+# Phase 3 finding). All configs link statically.
+build --dynamic_mode=off

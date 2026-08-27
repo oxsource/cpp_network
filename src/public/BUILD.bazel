@@ -19,6 +19,7 @@ cc_library(
         "include/http/response.h",
         "include/http/options.h",
         "include/http/client.h",
+        "include/http/websocket.h",
     ],
     includes = ["include"],
     visibility = ["//visibility:public"],

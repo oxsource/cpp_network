@@ -48,3 +48,7 @@ Thumbs.db
 # （已 Configure 的 openssl/curl 源码树副本），保留以便后续验证复用；
 # make/genrule 正式构建在 bazel 沙箱内进行，不依赖也不清理它。
 /work/
+
+# Python bytecode artifacts from test fixtures
+__pycache__/
+*.pyc

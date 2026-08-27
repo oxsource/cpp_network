@@ -15,5 +15,6 @@
 #include "http/response.h"
 #include "http/options.h"
 #include "http/client.h"
+#include "http/websocket.h"
 
 #endif  // CPP_NETWORK_HTTP_HTTP_H_

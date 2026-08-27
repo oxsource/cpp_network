@@ -58,7 +58,7 @@ docs/architecture/
 
 ## ADR 模板
 
-ADR 用于记录**已定案的架构决策**（含被否决的备选方案）。编号从 `adr-001` 递增。模板：
+ADR 用于记录**已定案的架构决策**（含被否决的备选方案）。现有 ADR：[001 同步 API](adr/adr-001-sync-api.md) · [002 libcurl 引擎](adr/adr-002-libcurl-engine.md) · [003 TLS 构建期选择](adr/adr-003-tls-buildtime-select.md) · [004 WebSocket 传输内核 libwebsockets](adr/adr-004-websockets-transport.md)。编号从 `adr-001` 递增。模板：
 
 ```markdown
 # ADR-XXX: <决策标题>

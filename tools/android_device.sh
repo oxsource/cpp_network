@@ -170,7 +170,7 @@ stage_system_ca_bundle() {
 #   a cabled connection is what matters. Host fixtures are launched here and
 #   torn down when done.
 RUN_MODE="${RUN_MODE:-external}"
-FIXTURE_PORTS="18080 18443 18444"
+FIXTURE_PORTS="18080 18443 18444 18086 18446 18447 18088"
 PIDS_FILE="/tmp/cpp_network_e2e_servers.pids"
 LOGDIR="/tmp/cpp_network_e2e_logs"
 
@@ -187,10 +187,25 @@ fixtures_up() {
   python3 "$REPO_ROOT/src/tests/test_tls_server.py" --port 18444 \
     --require-client-cert >"$LOGDIR/mtls.log" 2>&1 &
   echo $! >> "$PIDS_FILE"
+  python3 "$REPO_ROOT/src/tests/test_ws_server.py" --port 18086 \
+    >"$LOGDIR/ws-plain.log" 2>&1 &
+  echo $! >> "$PIDS_FILE"
+  python3 "$REPO_ROOT/src/tests/test_ws_server.py" --port 18446 --tls \
+    --certs-dir "$REPO_ROOT/src/tests/certs" >"$LOGDIR/ws-tls.log" 2>&1 &
+  echo $! >> "$PIDS_FILE"
+  python3 "$REPO_ROOT/src/tests/test_ws_server.py" --port 18447 --tls \
+    --require-client-cert \
+    --certs-dir "$REPO_ROOT/src/tests/certs" >"$LOGDIR/ws-mtls.log" 2>&1 &
+  echo $! >> "$PIDS_FILE"
+  python3 "$REPO_ROOT/src/tests/test_ws_server.py" --port 18088 \
+    --peer-close 1000 --reason bye >"$LOGDIR/ws-peerclose.log" 2>&1 &
+  echo $! >> "$PIDS_FILE"
 
   for i in $(seq 1 50); do
-    if port_listening 18080 && port_listening 18443 && port_listening 18444; then
-      echo "[android] host fixtures ready (:18080/:18443/:18444)"
+    if port_listening 18080 && port_listening 18443 && port_listening 18444 \
+       && port_listening 18086 && port_listening 18446 && port_listening 18447 \
+       && port_listening 18088; then
+      echo "[android] host fixtures ready (:18080/:18443/:18444 + ws :18086/:18446/:18447/:18088)"
       return 0
     fi
     sleep 0.1
@@ -239,7 +254,7 @@ do_run() {
     trap fixtures_down EXIT INT TERM
     fixtures_up
     reverse_up
-    envline="$envline NETLIB_TEST_MODE=local NETLIB_TEST_HTTP_BASE=http://127.0.0.1:18080 NETLIB_TEST_HTTPS_BASE=https://127.0.0.1:18443 NETLIB_TEST_MTLS_BASE=https://127.0.0.1:18444"
+    envline="$envline NETLIB_TEST_MODE=local NETLIB_TEST_HTTP_BASE=http://127.0.0.1:18080 NETLIB_TEST_HTTPS_BASE=https://127.0.0.1:18443 NETLIB_TEST_MTLS_BASE=https://127.0.0.1:18444 NETLIB_TEST_WS_PLAIN_BASE=ws://127.0.0.1:18086/echo NETLIB_TEST_WS_TLS_BASE=wss://127.0.0.1:18446/secure NETLIB_TEST_WS_MTLS_BASE=wss://127.0.0.1:18447/secure NETLIB_TEST_WS_PEER_CLOSE_BASE=ws://127.0.0.1:18088/bye SSL_CERT_FILE=$DEVICE_DIR/certs/system_cacerts.pem"
   fi
 
   local cmd="cd '$DEVICE_DIR' && $envline ./device_e2e 2>&1; echo $SENTINEL:\$?"

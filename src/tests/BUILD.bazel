@@ -23,6 +23,7 @@ cc_binary(
     deps = [
         "@cpp_network//src/http:client",
         "@cpp_network//src/public:public_headers",
+        "@cpp_network//src/websocket:websocket",
     ],
 )
 
@@ -92,4 +93,32 @@ cc_test(
         "@googletest//:gtest_main",
     ],
 )
+
+
+cc_test(
+    name = "websocket_test",
+    srcs = [
+        "test_util.h",
+        "websocket_test.cc",
+    ],
+    data = [
+        "certs/ca_cert.pem",
+        "certs/ca_key.pem",
+        "certs/client_cert.pem",
+        "certs/client_key.pem",
+        "certs/server_cert.pem",
+        "certs/server_key.pem",
+        "test_ws_server.py",
+        "//third_party/lws/host:build_lws",
+    ],
+    deps = [
+        "@cpp_network//src/public:public_headers",
+        "@cpp_network//src/websocket:websocket",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+
+
 

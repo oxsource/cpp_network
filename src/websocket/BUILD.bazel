@@ -1,10 +1,26 @@
-# Placeholder library for the WebSocket protocol implementation (v2).
-# Follows docs/architecture/websocket-*.md from the 001 proposal.
-package(default_visibility = ["//visibility:public"])
+# WebSocket protocol implementation (specs/006): synchronous client over the
+# bundled libwebsockets. Replaces the v2 placeholder from spec 001.
+package(default_visibility = [
+    "@cpp_network//src/public:__pkg__",
+    "@cpp_network//src/tests:__pkg__",
+])
+
+_TLS_DEPS = select({
+    "//platforms:android_arm64_setting": ["//third_party/lws/android:lws"],
+    "//platforms:macos_arm64_setting": ["//third_party/lws/host:lws"],
+    "//platforms:macos_x86_64_setting": ["//third_party/lws/host:lws"],
+    "//platforms:linux_x86_64_setting": ["//third_party/lws/host:lws"],
+    "//platforms:linux_aarch64_setting": ["//third_party/lws/host:lws"],
+    "//conditions:default": [],
+})
 
 cc_library(
     name = "websocket",
+    srcs = ["websocket.cc"],
     hdrs = [],
-    srcs = [],
-    deps = [],
+    alwayslink = 1,
+    deps = [
+        "@cpp_network//src/public:public_headers",
+        "@cpp_network//src/tls:tls",
+    ] + _TLS_DEPS,
 )

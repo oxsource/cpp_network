@@ -36,6 +36,15 @@ _CPP_NETWORK_DEPS = [
         "strip_prefix": "googletest-1.14.0",
         "urls": ["https://github.com/google/googletest/archive/refs/tags/v1.14.0.tar.gz"],
     },
+    # libwebsockets v4.5.8 stable — WebSocket client transport (specs/006),
+    # CMake-built against the TLS bundle's OpenSSL slice (single TLS stack).
+    {
+        "name": "lws",
+        "sha256": "b6ade658f4af3a823d0dc806ae5ef0623f0f4f5e2aeb895a0f77c4783840c30e",
+        "strip_prefix": "libwebsockets-4.5.8",
+        "urls": ["https://github.com/warmcat/libwebsockets/archive/refs/tags/v4.5.8.tar.gz"],
+        "build_file": "@cpp_network//third_party/libwebsockets:lws_external.BUILD",
+    },
     # OpenSSL 3.x LTS — TLS backend cross-built from source on the android
     # config (specs/004 research.md D1); other configs link the system curl
     # TLS stack instead.

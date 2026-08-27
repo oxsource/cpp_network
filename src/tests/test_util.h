@@ -47,6 +47,44 @@ inline std::string MtlsBase() {
              : std::string("https://127.0.0.1:18444");
 }
 
+// WebSocket endpoints (specs/006). Defaults line up with the host fixtures
+// started by tools/android_device.sh (local mode via adb reverse) and the
+// public echo service used by external-mode runs.
+inline std::string WsPlainBase() {
+  const char* v = std::getenv("NETLIB_TEST_WS_PLAIN_BASE");
+  return (v != nullptr && *v != '\0')
+             ? std::string(v)
+             : std::string("ws://127.0.0.1:18086/echo");
+}
+
+inline std::string WsTlsBase() {
+  const char* v = std::getenv("NETLIB_TEST_WS_TLS_BASE");
+  return (v != nullptr && *v != '\0')
+             ? std::string(v)
+             : std::string("wss://127.0.0.1:18446/secure");
+}
+
+inline std::string WsMtlsWsBase() {
+  const char* v = std::getenv("NETLIB_TEST_WS_MTLS_BASE");
+  return (v != nullptr && *v != '\0')
+             ? std::string(v)
+             : std::string("wss://127.0.0.1:18447/secure");
+}
+
+inline std::string WsPeerCloseBase() {
+  const char* v = std::getenv("NETLIB_TEST_WS_PEER_CLOSE_BASE");
+  return (v != nullptr && *v != '\0')
+             ? std::string(v)
+             : std::string("ws://127.0.0.1:18088/bye");
+}
+
+inline std::string ExtWsBase() {
+  const char* v = std::getenv("NETLIB_TEST_EXT_WS_BASE");
+  return (v != nullptr && *v != '\0')
+             ? std::string(v)
+             : std::string("wss://ws.postman-echo.com/raw");
+}
+
 // System trust-anchor bundle for verified-peer requests that don't inject a
 // custom anchor. Host binaries derive it from the OS store file matching the
 // running platform; Android runs receive it through

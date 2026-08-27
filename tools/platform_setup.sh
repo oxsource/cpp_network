@@ -84,7 +84,20 @@ check_adb() {
   echo "[platform_setup]         hint: export PATH=\"\$PATH:$HOME/Library/Android/sdk/platform-tools\""
 }
 
+# CMake >= 3.10 builds libwebsockets (specs/006 research.md D2); the TLS
+# chain only needs configure/make, so this is websocket-specific.
+check_cmake() {
+  if command -v cmake >/dev/null 2>&1; then
+    echo "[platform_setup] cmake  : ok ($(cmake --version | head -n1 | cut -d' ' -f3) at $(command -v cmake))"
+    return
+  fi
+  echo "[platform_setup] cmake  : not found in PATH"
+  echo "[platform_setup]         hint: brew install cmake   # or: apt install cmake"
+  echo "[platform_setup]         required to build libwebsockets (specs/006)"
+}
+
 check_ndk
 check_adb
+check_cmake
 
 exit 0

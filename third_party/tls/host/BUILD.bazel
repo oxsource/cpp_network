@@ -43,6 +43,21 @@ cp tls-install/lib/libcurl.a "$(RULEDIR)/lib/libcurl.a"
     tags = ["local", "manual"],
 )
 
+# Single-label handoff of the full installed tree (lib/ + include/) so OTHER
+# packages' genrules can consume the bundle without cross-package per-file
+# references (specs/006: libwebsockets builds against this tree).
+genrule(
+    name = "bundle_tar",
+    srcs = [":build_tls"],
+    outs = ["tls-install.tar.gz"],
+    cmd = """
+set -e
+cd "$(RULEDIR)" && tar -czf tls-install.tar.gz lib include
+""",
+    message = "packing native-host TLS bundle tree",
+    tags = ["local", "manual"],
+)
+
 cc_library(
     name = "curl",
     srcs = [

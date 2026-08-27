@@ -64,10 +64,15 @@ android_verify: android_build android_push
 .PHONY: deps_audit
 MK_TARGETS += deps_audit
 deps_audit:
-	@echo "[audit] scanning for system-libcurl references..."
-	@if grep -rn --include='BUILD*' --include='*.bzl' '\-lcurl' \
+	@echo "[audit] scanning for system-libcurl / direct -lwebsockets refs..."
+	@if grep -rn --include='BUILD*' --include='*.bzl' -e '-lcurl' \
 	     src third_party platforms BUILD.bazel WORKSPACE cpp_network_deps.bzl \
 	     2>/dev/null; then \
 	  echo "ERROR: system-libcurl references found (FR-003 violation)" >&2; exit 1; \
 	fi
-	@echo "[audit] OK: no -lcurl references in the Bazel graph"
+	@if grep -rn --include='BUILD*' --include='*.bzl' -e '--lwebsockets\|lws-libs\|-lwebsockets' \
+	     src platforms BUILD.bazel WORKSPACE cpp_network_deps.bzl \
+	     2>/dev/null; then \
+	  echo "ERROR: direct websockets linkage bypasses the bundle (specs/006 FR-004)" >&2; exit 1; \
+	fi
+	@echo "[audit] OK: no -lcurl / -lwebsockets bypass in the Bazel graph"

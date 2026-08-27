@@ -31,6 +31,14 @@ using cpp_network::http::Result;
 using cpp_network::http::Response;
 using cpp_network::http::Tls;
 using cpp_network::http::TlsBase;
+using cpp_network::http::WsMtlsWsBase;
+using cpp_network::http::WsPeerCloseBase;
+using cpp_network::http::WsPlainBase;
+using cpp_network::http::WsTlsBase;
+using cpp_network::http::ExtWsBase;
+using cpp_network::http::WebSocket;
+using cpp_network::http::WsCloseCode;
+using cpp_network::http::WsMessage;
 
 namespace {
 
@@ -155,6 +163,185 @@ bool E3_PostJsonEcho(std::string* detail) {
       res->body().find("hello") == std::string::npos ||
       res->body().find("android") == std::string::npos) {
     *detail = "status " + std::to_string(res->status()) + " no echo";
+    return false;
+  }
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// WebSocket scenarios (specs/006, contracts/device-scenarios.md).
+// External list runs against a public trusted wss echo; local list exercises
+// the host fixtures (plain/tls/mTLS-ws/peer-close) through adb reverse.
+// ---------------------------------------------------------------------------
+
+bool W1_WssPublicEcho(std::string* detail) {
+  // Explicit ext-store anchor via SetCaFile: routes into lws' filepath
+  // client-CA form, whose OpenSSL load path digests the multi-cert merged
+  // store (the memory form decodes only a single PEM block).
+  auto r = WebSocket::Connect(ExtWsBase(), VerifiedWithExtAnchor());
+  if (!r.ok()) {
+    *detail = r.error().message();
+    return false;
+  }
+  WebSocket ws = r.TakeValue();
+  if (!ws.IsOpen()) {
+    *detail = "not open after handshake";
+    return false;
+  }
+  WsMessage out;
+  out.is_text = true;
+  const std::string payload = "device-wss-echo";
+  out.data.assign(payload.begin(), payload.end());
+  if (!ws.Send(out).ok()) {
+    *detail = "send failed";
+    return false;
+  }
+  auto got = ws.Receive();
+  if (!got.ok()) {
+    *detail = got.error().message();
+    return false;
+  }
+  if (!got.value().is_text ||
+      std::string(got.value().data.begin(), got.value().data.end()) !=
+          payload) {
+    *detail = "echo mismatch";
+    return false;
+  }
+  if (!ws.Close(WsCloseCode::kNormal, "done").ok()) {
+    *detail = "close handshake failed";
+    return false;
+  }
+  return true;
+}
+
+bool W2_PlainConnectOpens(std::string* detail) {
+  auto r = WebSocket::Connect(WsPlainBase(), ShortTimeouts());
+  if (!r.ok()) {
+    *detail = r.error().message();
+    return false;
+  }
+  if (!r.value().IsOpen()) {
+    *detail = "session not open";
+    return false;
+  }
+  return true;
+}
+
+bool W3_SelfSignedWssRejectedByDefault(std::string* detail) {
+  auto r = WebSocket::Connect(WsTlsBase(), ShortTimeouts());
+  if (r.ok()) {
+    *detail = "self-signed accepted by default";
+    return false;
+  }
+  if (r.error().code() != ErrorCode::kCertificateVerificationFailed) {
+    *detail =
+        "[" + std::string(cpp_network::http::ErrorCodeToString(
+                  r.error().code())) +
+        "] " + r.error().message();
+    return false;
+  }
+  return true;
+}
+
+bool W4_InMemoryAnchorAccepted(std::string* detail) {
+  Options options = ShortTimeouts();
+  options.SetTls(Tls::Builder()
+                     .SetCaPem(ReadFileOrDie(CertPath("ca_cert.pem")))
+                     .Build());
+  auto r = WebSocket::Connect(WsTlsBase(), options);
+  if (!r.ok()) {
+    *detail = r.error().message();
+    return false;
+  }
+  return r.value().IsOpen();
+}
+
+bool W5_InvalidSchemeFastFail(std::string* /*detail*/) {
+  auto bad = WebSocket::Connect("ftp://example.org/f", ShortTimeouts());
+  if (bad.ok() || bad.error().code() != ErrorCode::kInvalidArgument) {
+    return false;
+  }
+  auto empty = WebSocket::Connect("", ShortTimeouts());
+  return !empty.ok() && empty.error().code() == ErrorCode::kInvalidArgument;
+}
+
+bool W6_BinaryRoundTripFragmentedTransparent(std::string* detail) {
+  auto r = WebSocket::Connect(WsPlainBase(), ShortTimeouts());
+  if (!r.ok()) {
+    *detail = r.error().message();
+    return false;
+  }
+  WebSocket ws = r.TakeValue();
+  static constexpr size_t kPayloadSize = 8u * 1024 * 1024;
+  WsMessage big;
+  big.is_text = false;
+  big.data.resize(kPayloadSize);
+  for (size_t i = 0; i < kPayloadSize; ++i) {
+    big.data[i] = static_cast<uint8_t>(i * 31 + (i >> 8));
+  }
+  if (!ws.Send(big).ok()) {
+    *detail = "big send failed";
+    return false;
+  }
+  auto got = ws.Receive();
+  if (!got.ok()) {
+    *detail = got.error().message();
+    return false;
+  }
+  if (got.value().data != big.data) {
+    *detail = "8MB round-trip mismatch";
+    return false;
+  }
+  return true;
+}
+
+bool W7_MtlsPair(std::string* detail) {
+  // Without client cert: rejected.
+  Options no_cert = ShortTimeouts();
+  no_cert.SetTls(Tls::Builder().SetVerifyMode(
+      cpp_network::http::VerifyMode::kSkipVerification).Build());
+  auto rejected = WebSocket::Connect(WsMtlsWsBase(), no_cert);
+  if (rejected.ok() && rejected.value().IsOpen()) {
+    *detail = "mTLS endpoint accepted connection without client cert";
+    return false;
+  }
+  // With client material: accepted (server anchor via skip-verify isolate).
+  Options with_cert = no_cert;
+  with_cert.SetTls(Tls::Builder()
+                       .SetVerifyMode(
+                           cpp_network::http::VerifyMode::kSkipVerification)
+                       .SetCertificate(CertPath("client_cert.pem"),
+                                       CertPath("client_key.pem"))
+                       .Build());
+  auto accepted = WebSocket::Connect(WsMtlsWsBase(), with_cert);
+  if (!accepted.ok()) {
+    *detail = "with-cert connect failed: " + accepted.error().message();
+    return false;
+  }
+  return accepted.value().IsOpen();
+}
+
+bool W8_PeerCloseDetails(std::string* detail) {
+  auto r = WebSocket::Connect(WsPeerCloseBase(), ShortTimeouts());
+  if (!r.ok()) {
+    *detail = r.error().message();
+    return false;
+  }
+  auto got = r.value().Receive();  // peer closes right after handshake
+  if (got.ok()) {
+    *detail = "expected close-carrying failure";
+    return false;
+  }
+  if (got.error().code() != ErrorCode::kConnectionClosed) {
+    *detail =
+        "[" + std::string(cpp_network::http::ErrorCodeToString(
+                  got.error().code())) +
+        "] " + got.error().message();
+    return false;
+  }
+  if (got.error().close_code() != 1000 ||
+      got.error().close_reason() != "bye") {
+    *detail = "close details mismatch";
     return false;
   }
   return true;
@@ -318,6 +505,20 @@ bool S7_HttpBaseline404Header(std::string* detail) {
   return true;
 }
 
+const Scenario kWssExternalScenarios[] = {
+    {1, "wss public echo (text roundtrip)", W1_WssPublicEcho},
+};
+
+const Scenario kWssLocalScenarios[] = {
+    {1, "plaintext ws connect opens", W2_PlainConnectOpens},
+    {2, "self-signed wss rejected by default", W3_SelfSignedWssRejectedByDefault},
+    {3, "in-memory CA anchor accepted", W4_InMemoryAnchorAccepted},
+    {4, "invalid scheme fast fail", W5_InvalidSchemeFastFail},
+    {5, "8MB binary echo (fragmentation transparent)", W6_BinaryRoundTripFragmentedTransparent},
+    {6, "mTLS pair", W7_MtlsPair},
+    {7, "peer close details via Receive", W8_PeerCloseDetails},
+};
+
 const Scenario kLocalScenarios[] = {
     {1, "self-signed rejected by default", S1_DefaultRejectsSelfSigned},
     {2, "CA file injection accepted", S2_CaFileInjected},
@@ -335,28 +536,43 @@ int main() {
       std::getenv("NETLIB_TEST_MODE") != nullptr &&
       std::string(std::getenv("NETLIB_TEST_MODE")) == "local";
   const Scenario* scenarios = local_mode ? kLocalScenarios : kExternalScenarios;
-  const char* tag = local_mode ? "S" : "E";
-  const int total = (local_mode ? sizeof(kLocalScenarios)
-                                : sizeof(kExternalScenarios)) /
-                    sizeof(Scenario);
+  const int base_total =
+      static_cast<int>(local_mode ? sizeof(kLocalScenarios)
+                                  : sizeof(kExternalScenarios)) /
+      sizeof(Scenario);
+  // WebSocket block appended after the protocol baseline set (specs/006);
+  // ids restart at 1 but the printed tag keeps the streams distinguishable.
+  const Scenario* ws_scenarios =
+      local_mode ? kWssLocalScenarios : kWssExternalScenarios;
+  const int ws_total =
+      static_cast<int>(local_mode ? sizeof(kWssLocalScenarios)
+                                  : sizeof(kWssExternalScenarios)) /
+      sizeof(Scenario);
+
   int passed = 0;
-  int first_failure = 0;
-  for (int i = 0; i < total; ++i) {
-    const Scenario& scenario = scenarios[i];
-    std::string detail;
-    const bool ok = scenario.run(&detail);
-    std::printf("[%s%d] %s : %s%s%s\n", tag, scenario.id,
-                ok ? "PASS" : "FAIL", scenario.name,
-                ok ? "" : " -- ", ok ? "" : detail.c_str());
-    std::fflush(stdout);
-    if (ok) {
-      ++passed;
-      continue;
+  int grand_total = base_total + ws_total;
+  bool any_failure = false;
+  for (int pass = 0; pass < 2; ++pass) {
+    const char* tag = pass == 0 ? (local_mode ? "S" : "E") : "W";
+    const Scenario* list = pass == 0 ? scenarios : ws_scenarios;
+    const int count = pass == 0 ? base_total : ws_total;
+    for (int i = 0; i < count; ++i) {
+      const Scenario& scenario = list[i];
+      std::string detail;
+      const bool ok = scenario.run(&detail);
+      std::printf("[%s%d] %s : %s%s%s\n", tag, scenario.id,
+                  ok ? "PASS" : "FAIL", scenario.name,
+                  ok ? "" : " -- ", ok ? "" : detail.c_str());
+      std::fflush(stdout);
+      if (ok) {
+        ++passed;
+      } else {
+        any_failure = true;
+      }
     }
-    if (first_failure == 0) first_failure = scenario.id;
   }
 
-  std::printf("PASS %d/%d\n", passed, total);
+  std::printf("PASS %d/%d\n", passed, grand_total);
   std::fflush(stdout);
-  return first_failure == 0 ? 0 : first_failure + 1;
+  return any_failure ? 95 : 0;
 }
