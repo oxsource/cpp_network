@@ -1,6 +1,6 @@
 """OpenSSL version pinning for the cpp_network workspace.
 
-Consumed by netlib_deps.bzl (fetch) and third_party/openssl/BUILD.bazel.
+Consumed by cpp_network_deps.bzl (fetch) and third_party/openssl/BUILD.bazel.
 Kept here to centralize version/sha256 in one place per dependency.
 """
 

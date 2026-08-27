@@ -27,7 +27,7 @@ tools/platform_setup.sh    # 会提示 ANDROID_NDK_HOME 与 adb 是否就绪
 
 ```bash
 make build-android
-# 产出：netlib（arm64-v8a）+ 设备端可执行程序 device_e2e / http_demo
+# 产出：cpp_network（arm64-v8a）+ 设备端可执行程序 device_e2e / http_demo
 ```
 
 首次构建会自动下载并交叉编译 OpenSSL/curl 源码（锁定版本），耗时较长属预期；之后为增量构建。

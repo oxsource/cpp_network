@@ -1,4 +1,4 @@
-# TLS configuration layer for the netlib library.
+# TLS configuration layer for the cpp_network library.
 #
 # The `tls` target provides Tls validation (CA sources, mTLS pairing, SNI,
 # inline PEM sanity). CURLOPT_SSL_* mapping lives in //src/http:engine

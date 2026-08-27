@@ -6,7 +6,7 @@
 
 ## Summary
 
-在 Android 平台补齐 HTTPS 能力：源码交叉编译 OpenSSL 3.x LTS（已锁定版本）+ libcurl 并静态链接进 netlib，公共 API 保持平台无关；同时提供 `make push` / `make run` 等设备部署闭环目标——把设备端可执行程序推送到已连接的 Android 设备，经 `adb reverse` 访问宿主机本地测试服务，实时回传输出并透传退出码，使「改代码 → 构建 → push → run → 出结果」成为分钟级日常回归手段。
+在 Android 平台补齐 HTTPS 能力：源码交叉编译 OpenSSL 3.x LTS（已锁定版本）+ libcurl 并静态链接进 cpp_network，公共 API 保持平台无关；同时提供 `make push` / `make run` 等设备部署闭环目标——把设备端可执行程序推送到已连接的 Android 设备，经 `adb reverse` 访问宿主机本地测试服务，实时回传输出并透传退出码，使「改代码 → 构建 → push → run → 出结果」成为分钟级日常回归手段。
 
 ## Technical Context
 

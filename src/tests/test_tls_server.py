@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local HTTPS test server fixture for netlib TLS integration tests.
+"""Local HTTPS test server fixture for cpp_network TLS integration tests.
 
 Serves GET / with a self-signed certificate signed by src/tests/certs/ca_cert.pem.
 Optionally requires client certificates (mTLS) with --require-client-cert.

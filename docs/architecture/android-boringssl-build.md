@@ -19,7 +19,7 @@
 ### 方案 A：BoringSSL 源码 + libcurl 源码，Bazel 编译（推荐）
 
 ```text
-WORKSPACE (netlib_deps.bzl)
+WORKSPACE (cpp_network_deps.bzl)
  ├── @boringssl        # http_archive: BoringSSL source (CMake project)
  └── @libcurl          # http_archive: curl source
 ```
@@ -114,7 +114,7 @@ cc_library(
 
 - v1 仅支持 Android **arm64**（主流；armv7a/x86_64 留后续，宏需按 ABI 扩展 `curl_config_android_*.h`）。
 - API level ≥ 24（spec Assumptions）。
-- BoringSSL 不提供稳定 ABI/版本语义（跟随 master 或固定 tag）；必须在 `netlib_deps.bzl` 锁定 commit hash。
+- BoringSSL 不提供稳定 ABI/版本语义（跟随 master 或固定 tag）；必须在 `cpp_network_deps.bzl` 锁定 commit hash。
 
 ## 评审要点
 

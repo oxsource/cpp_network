@@ -2,7 +2,7 @@
 
 **Branch**: `002-engineering-structure`（落地）/ `003-http-implementation`（核对） | **Date**: 2026-08-26
 
-> **状态（2026-08-26，实现核对）**：平台机制已按本文落地并验证（macOS arm64）。与原设计的差异：workspace 名 `cpp_network`（非 `netlib`）；根 BUILD 为 `alias //:netlib -> //src/public:netlib`；公共头在 `src/public/include/http/`；导出宏 `CPP_NETWORK_HTTP_EXPORT` / `CPP_NETWORK_HTTP_SHARED_LIBRARY`（http/export.h）；`.bazelrc` 无全局 `--features=visibility=hidden`（符号隐藏经各目标 copts/属性控制）；本地覆盖文件为 `.user.bazelrc`；无 `netlib_deps.bzl`（bazel_skylib/googletest 直接置于 third_party/）；`src/core/` 不存在。
+> **状态（2026-08-26，实现核对；2026-08-27 更名核对）**：平台机制已按本文落地并验证（macOS arm64）。与原设计的差异：workspace 名为 `cpp_network`（001 初稿名为 `netlib`，启用前已统一更名）；根 BUILD 为 `alias //:cpp_network -> //src/public:cpp_network`；公共头在 `src/public/include/http/`；导出宏 `CPP_NETWORK_HTTP_EXPORT` / `CPP_NETWORK_HTTP_SHARED_LIBRARY`（http/export.h）；`.bazelrc` 无全局 `--features=visibility=hidden`（符号隐藏经各目标 copts/属性控制）；本地覆盖文件为 `.user.bazelrc`；依赖引导脚本为 `cpp_network_deps.bzl`（bazel_skylib/googletest 等经其注册于 third_party/）；`src/core/` 不存在。
 
 **对应需求**: FR-014（Bazel 6.5 构建 macOS/Linux/Android）、FR-016（平台无关公共 API）、FR-003/FR-021（跨平台 TLS 后端选型）
 
@@ -19,12 +19,12 @@
 
 ```text
 WORKSPACE              # workspace(name = "cpp_network")
-BUILD.bazel            # Root BUILD: alias //:netlib -> //src/public:netlib
+BUILD.bazel            # Root BUILD: alias //:cpp_network -> //src/public:cpp_network
 .bazelversion          # 6.5.0
 .bazelrc               # Project-level config (committed)
 platforms/
 ├── BUILD              # Platform definitions
-└── platforms.bzl      # config_setting_and_platform macro + netlib_select
+└── platforms.bzl      # config_setting_and_platform macro + platform_select
 third_party/
 ├── libcurl/           # Placeholder comment (currently links system -lcurl, see host-openssl-build.md)
 ├── openssl/           # Placeholder comment
@@ -59,7 +59,7 @@ def config_setting_and_platform(name, constraint_values, parents=None):
         parents = parents,
     )
 
-def netlib_select(select_map):
+def platform_select(select_map):
     return select(select_map)
 ```
 
@@ -142,7 +142,7 @@ cc_library(
 ```
 
 要点：
-- 全平台统一 OpenSSL（用户决策，2026-08-26）；`netlib_select` 宏保留供其他条件依赖使用，但 TLS 不再依赖平台分支；
+- 全平台统一 OpenSSL（用户决策，2026-08-26）；`platform_select` 宏保留供其他条件依赖使用，但 TLS 不再依赖平台分支；
 - 源码构建 libcurl/OpenSSL（`host-openssl-build.md` 方案 A）为后续任务；`android-boringssl-build.md` 已废弃；
 - 公共 API（`src/public/include/http/`）绝不出现 TLS 后端类型，保证 FR-016。
 
@@ -166,7 +166,7 @@ cc_library(
 #endif
 ```
 
-静态消费时宏为空；`netlib_shared` 目标以 `defines = ["CPP_NETWORK_HTTP_SHARED_LIBRARY"]` 构建。
+静态消费时宏为空；`cpp_network_shared` 目标以 `defines = ["CPP_NETWORK_HTTP_SHARED_LIBRARY"]` 构建。
 
 ## 边界与约束
 

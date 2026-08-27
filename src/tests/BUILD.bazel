@@ -1,13 +1,28 @@
-# Unit and integration tests for the netlib library.
+# Unit and integration tests for the cpp_network library.
 package(default_visibility = ["//visibility:public"])
 
 cc_test(
     name = "smoke_test",
     srcs = ["smoke_test.cc"],
     deps = [
-        "@cpp_network//src/public:netlib",
+        "@cpp_network//src/public:cpp_network",
         "@googletest//:gtest",
         "@googletest//:gtest_main",
+    ],
+)
+
+# Device/host e2e checker for specs/004 US1: same binary runs on the host
+# against local fixtures and on Android via make push/run, where the cert
+# root comes from NETLIB_TEST_DATA_DIR and services arrive via adb reverse.
+cc_binary(
+    name = "device_e2e",
+    srcs = [
+        "device_e2e.cc",
+        "test_util.h",
+    ],
+    deps = [
+        "@cpp_network//src/http:client",
+        "@cpp_network//src/public:public_headers",
     ],
 )
 
@@ -25,7 +40,10 @@ cc_test(
 
 cc_test(
     name = "https_test",
-    srcs = ["https_test.cc"],
+    srcs = [
+        "https_test.cc",
+        "test_util.h",
+    ],
     data = [
         "certs/ca_cert.pem",
         "certs/ca_key.pem",
@@ -47,7 +65,7 @@ cc_test(
     name = "url_test",
     srcs = ["url_test.cc"],
     deps = [
-        "@cpp_network//src/public:netlib",
+        "@cpp_network//src/public:cpp_network",
         "@googletest//:gtest",
         "@googletest//:gtest_main",
     ],
@@ -57,7 +75,7 @@ cc_test(
     name = "headers_test",
     srcs = ["headers_test.cc"],
     deps = [
-        "@cpp_network//src/public:netlib",
+        "@cpp_network//src/public:cpp_network",
         "@googletest//:gtest",
         "@googletest//:gtest_main",
     ],

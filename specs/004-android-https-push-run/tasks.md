@@ -24,8 +24,8 @@
 
 **Purpose**: 让 NDK 工具链与构建依赖在 workspace 中可用（所有后续阶段的前提）
 
-- [ ] T001 Register rules_foreign_cc dependency and `android_ndk_repository(name="androidndk", path=$ANDROID_NDK_HOME)` in WORKSPACE; confirm `bazel query @androidndk//...` resolves when ANDROID_NDK_HOME is set (per plan.md D3)
-- [ ] T002 [P] Extend tools/platform_setup.sh with NDK r26+ and adb presence checks, printing actionable hints (export ANDROID_NDK_HOME / PATH) per specs/004-android-https-push-run/research.md D6-D7
+- [x] T001 Register rules_foreign_cc dependency and `android_ndk_repository(name="androidndk", path=$ANDROID_NDK_HOME)` in WORKSPACE; confirm `bazel query @androidndk//...` resolves when ANDROID_NDK_HOME is set (per plan.md D3)
+- [x] T002 [P] Extend tools/platform_setup.sh with NDK r26+ and adb presence checks, printing actionable hints (export ANDROID_NDK_HOME / PATH) per specs/004-android-https-push-run/research.md D6-D7
 
 **Checkpoint**: 工具链可见性就绪——`@androidndk` 可解析、platform_setup 输出含 NDK 状态行
 
@@ -33,15 +33,15 @@
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-**Purpose**: 打通「Android 架构下 OpenSSL+curl 源码交叉编译并注入 netlib」的完整依赖图；所有用户故事都阻塞于此
+**Purpose**: 打通「Android 架构下 OpenSSL+curl 源码交叉编译并注入 cpp_network」的完整依赖图；所有用户故事都阻塞于此
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T003 Implement third_party/openssl/BUILD.bazel android branch: rules_foreign_cc `configure_make` building pinned OpenSSL 3.0.13 (third_party/openssl/openssl.bzl) into static `ssl`/`crypto` targets under config_setting android_arm64, keeping the host stub intact via select() (research.md D1/D2)
-- [ ] T004 Implement third_party/libcurl/BUILD.bazel android branch: autotools build of pinned curl 8.7.1 with `--with-openssl=<openssl install>` + `--enable-static --disable-shared` + protocol trim to HTTP/HTTPS (`--disable-*` extras per research.md D2); expose `curl` cc_library target (depends on T003)
-- [ ] T005 Switch src/http/BUILD.bazel engine/client linkopts to select(): host keeps `-lcurl`; android_arm64 links the source-built curl target (T004); then verify `bazel build --config=macos_arm64 //src/public:netlib` still passes and `bazel build --config=android_arm64 //src/public:netlib` produces arm64-v8a outputs (FR-010 zero-regression gate)
+- [x] T003 Implement third_party/openssl/BUILD.bazel android branch: rules_foreign_cc `configure_make` building pinned OpenSSL 3.0.13 (third_party/openssl/openssl.bzl) into static `ssl`/`crypto` targets under config_setting android_arm64, keeping the host stub intact via select() (research.md D1/D2)
+- [x] T004 Implement third_party/libcurl/BUILD.bazel android branch: autotools build of pinned curl 8.7.1 with `--with-openssl=<openssl install>` + `--enable-static --disable-shared` + protocol trim to HTTP/HTTPS (`--disable-*` extras per research.md D2); expose `curl` cc_library target (depends on T003)
+- [x] T005 Switch src/http/BUILD.bazel engine/client linkopts to select(): host keeps `-lcurl`; android_arm64 links the source-built curl target (T004); then verify `bazel build --config=macos_arm64 //src/public:cpp_network` still passes and `bazel build --config=android_arm64 //src/public:cpp_network` produces arm64-v8a outputs (FR-010 zero-regression gate)
 
-**Checkpoint**: Foundation ready——netlib 在 android 架构可编译链接；host 全量行为零变化。US1 的手动验证与 US2 的命令化目标均可从此起步
+**Checkpoint**: Foundation ready——cpp_network 在 android 架构可编译链接；host 全量行为零变化。US1 的手动验证与 US2 的命令化目标均可从此起步
 
 ---
 
@@ -55,10 +55,10 @@
 
 > **NOTE**: 先落资产路径覆写点，再写场景编排；场景清单与退出码协议见 data-model.md Entity 4 与 contracts/device-test-contract.md
 
-- [ ] T006 [P] [US1] Add test-asset root resolution honoring `NETLIB_TEST_DATA_DIR` env override (default repo-relative `src/tests/certs/`) as a shared helper header in src/tests/, and switch cert path construction in src/tests/https_test.cc to use it (contracts/device-test-contract.md 覆写点，宿主行为不变)
-- [ ] T007 [US1] Implement src/tests/device_e2e.cc: self-contained scenario orchestration S1–S7 using public API only (default-reject / SetCaFile / SetCaPem / mTLS without client cert / mTLS with client cert / kSkipVerification / HTTP 404 baseline) against `127.0.0.1:<ports>` bases overridable via env (data-model.md Entity 4, exit-code = first-failing-scenario-id+1, continue-on-failure, final `PASS <n>/<total>` line)
-- [ ] T008 [US1] Register device_e2e cc_binary in src/tests/BUILD.bazel linking //src/http:client + public_headers so it builds for both host (smoke) and android_arm64
-- [ ] T009 [US1] Manually validate all four HTTPS scenarios on a real device/emulator following contracts/device-test-contract.md topology (test servers stay on host; adb reverse channels; record evidence for FR-010): default reject error matches host ErrorCode, CA file/in-memory/mTLS/skip succeed (SC-001)
+- [x] T006 [P] [US1] Add test-asset root resolution honoring `NETLIB_TEST_DATA_DIR` env override (default repo-relative `src/tests/certs/`) as a shared helper header in src/tests/, and switch cert path construction in src/tests/https_test.cc to use it (contracts/device-test-contract.md 覆写点，宿主行为不变)
+- [x] T007 [US1] Implement src/tests/device_e2e.cc: self-contained scenario orchestration S1–S7 using public API only (default-reject / SetCaFile / SetCaPem / mTLS without client cert / mTLS with client cert / kSkipVerification / HTTP 404 baseline) against `127.0.0.1:<ports>` bases overridable via env (data-model.md Entity 4, exit-code = first-failing-scenario-id+1, continue-on-failure, final `PASS <n>/<total>` line)
+- [x] T008 [US1] Register device_e2e cc_binary in src/tests/BUILD.bazel linking //src/http:client + public_headers so it builds for both host (smoke) and android_arm64
+- [ ] T009 (BLOCKED: no device attached — run `adb devices` and connect/authorize one) [US1] Manually validate all four HTTPS scenarios on a real device/emulator following contracts/device-test-contract.md topology (test servers stay on host; adb reverse channels; record evidence for FR-010): default reject error matches host ErrorCode, CA file/in-memory/mTLS/skip succeed (SC-001)
 
 **Checkpoint**: 不依赖任何 make 目标，即可在设备上复现与主机一致的 HTTPS 行为——US1 独立成立（spec US1 验收场景 1–4 全部通过）
 
@@ -66,13 +66,13 @@
 
 ## Phase 4: User Story 2 - 开发者一条命令完成 Android 构建产物 (Priority: P1)
 
-**Goal**: 拉取仓库后按文档执行单一命令即产出 netlib 与设备端程序，首次与增量路径均可用
+**Goal**: 拉取仓库后按文档执行单一命令即产出 cpp_network 与设备端程序，首次与增量路径均可用
 
 **Independent Test**: 干净环境（无 bazel 缓存）执行 `make build-android` → 退出码 0 且产物齐备；再次执行明显更快（SC-002 增量部分由 US3 闭环覆盖）
 
 ### Implementation for User Story 2
 
-- [ ] T010 [US2] Create mk/android.mk defining `build-android` target that delegates to `bazel build --config=android_arm64 //src/public:netlib //src/tests:device_e2e //src/examples/http_demo:http_demo`, surfacing bazel failures verbatim; register description text through mk/rules.mk conventions (contracts/make-targets.md Targets 表)
+- [ ] T010 [US2] Create mk/android.mk defining `build-android` target that delegates to `bazel build --config=android_arm64 //src/public:cpp_network //src/tests:device_e2e //src/examples/http_demo:http_demo`, surfacing bazel failures verbatim; register description text through mk/rules.mk conventions (contracts/make-targets.md Targets 表)
 - [ ] T011 [US2] Add `ANDROID_NDK_HOME` prerequisite guard inside build-android: fail fast with hint to run tools/platform_setup.sh when unset or missing (US2 acceptance scenario 1 preflight)
 - [ ] T012 [US2] Validate fresh-environment reproducibility of build-android (clear third-party build caches, rerun, record wall time) and compare with incremental run for docs evidence (SC-002; research.md D7 matrix evidence ②)
 

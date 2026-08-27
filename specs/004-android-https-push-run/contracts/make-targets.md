@@ -8,7 +8,7 @@ Makefile 顶层入口经由 `mk/android.mk` 注册；目标名、变量与退出
 
 | Target | 作用 | 前置条件 | 成功判定 |
 |--------|------|----------|----------|
-| `make build-android` | 构建 Android arm64-v8a 的 netlib 与设备端可执行程序（device_e2e、http_demo） | `ANDROID_NDK_HOME` 指向 NDK r26+ | bazel build 退出码 0，产物在输出树 |
+| `make build-android` | 构建 Android arm64-v8a 的 cpp_network 与设备端可执行程序（device_e2e、http_demo） | `ANDROID_NDK_HOME` 指向 NDK r26+ | bazel build 退出码 0，产物在输出树 |
 | `make push [DEVICE=<serial>]` | 解析最新产物并推送二进制 + `src/tests/certs/` 到设备 `/data/local/tmp/cpp_network/` | 至少一台可用设备；产物为非 stale | adb push 全部成功 |
 | `make run [DEVICE=<serial>] [PORTS="18080 18443"]` | 启动宿主测试服务 → 建立端口反向转发 → 设备端执行程序 → 输出回传 | push 已完成或自动触发 | e2e 退出码透传为 make 退出码 |
 | `make clean-device [DEVICE=<serial>]` | 删除设备端 `/data/local/tmp/cpp_network/` 内容 | 可用设备存在 | 清理成功（目录不存在亦视为成功） |

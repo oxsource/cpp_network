@@ -17,7 +17,7 @@
 ## 类型定义
 
 ```cpp
-// src/public/include/netlib/network_config.h (RetryPolicy definition in network-config.md)
+// src/public/include/cpp_network/network_config.h (RetryPolicy definition in network-config.md)
 struct RetryPolicy {
   int max_retries = 0;                     // 0 = no retry (default)
   std::chrono::milliseconds retry_delay{100};

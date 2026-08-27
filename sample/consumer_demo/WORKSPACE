@@ -1,7 +1,7 @@
 workspace(name = "consumer_demo")
 
 # Consume the cpp_network library as an external Bazel workspace via
-# local_repository, demonstrating how other projects depend on netlib.
+# local_repository, demonstrating how other projects depend on cpp_network.
 local_repository(
     name = "cpp_network",
     path = "../..",

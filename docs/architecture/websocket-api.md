@@ -1,6 +1,6 @@
 # WebSocket API Design（同步版）
 
-> **状态（2026-08-26，spec 003 实现核对）**：WebSocket 为 v2 范围，`src/websocket/` 目前仅有占位 BUILD 目标。命名体系已迁移至 `cpp_network`（本文仍为 001 草案的 `netlib` 命名），实现时需按新命名重新起草。
+> **状态（2026-08-26，spec 003 实现核对）**：WebSocket 为 v2 范围，`src/websocket/` 目前仅有占位 BUILD 目标。命名体系已迁移至 `cpp_network`（本文代码示例已同步更名），实现时需按现行命名重新起草。
 
 **Branch**: `001-cpp-network-library` | **Date**: 2026-08-26（同步重构版）
 
@@ -23,17 +23,17 @@
 ## 公共 API 设计（v2 草案，同步）
 
 ```cpp
-// src/public/include/netlib/websocket.h
+// src/public/include/cpp_network/websocket.h
 #pragma once
 
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "netlib/network_config.h"
-#include "netlib/result.h"
+#include "cpp_network/network_config.h"
+#include "cpp_network/result.h"
 
-namespace netlib {
+namespace cpp_network {
 
 struct WsMessage {
   std::vector<uint8_t> data;   // Raw bytes
@@ -70,7 +70,7 @@ class WebSocket {
   std::shared_ptr<Impl> impl_;
 };
 
-}  // namespace netlib
+}  // namespace cpp_network
 ```
 
 ## 同步语义对应（JS WebSocket 类比）

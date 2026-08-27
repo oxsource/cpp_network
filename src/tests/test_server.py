@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local HTTP test server fixture for netlib integration tests.
+"""Local HTTP test server fixture for cpp_network integration tests.
 
 Endpoints:
   GET  /            -> 200 "Hello World"

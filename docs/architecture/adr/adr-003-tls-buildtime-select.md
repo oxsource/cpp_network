@@ -42,5 +42,5 @@ TLS 由 libcurl 的 SSL 后端承担，**后端跟随平台惯例，不做统一
 - 平台后端差异对 API 完全透明；公共头无任何 curl/SSL 类型。
 - 各平台 TLS 行为由 libcurl 抽象保证一致；后端差异（如 CA store 来源）记录于 tls-config.md 的平台差异表。
 - `third_party/openssl` 与 `third_party/libcurl` 维持占位，仅在 Android 集成启动时激活。
-- `android-boringssl-build.md` 保持废弃；`netlib_select` 无 TLS 分支。
+- `android-boringssl-build.md` 保持废弃；原 `netlib_select` 平台助手（无 TLS 分支）已随命名统一移除。
 - 若未来出现需要锁定特定 OpenSSL 版本的需求（如依赖其特有行为），再重新评估源码构建路径。

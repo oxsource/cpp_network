@@ -27,7 +27,7 @@
 
 ## D2: Android 上 libcurl 的获取方式
 
-**Decision**: libcurl 8.7.1 源码 autotools 构建（复用已 pin 版本），`--with-openssl=<openssl install>`、`--enable-static --disable-shared`、协议裁剪到 HTTP/HTTPS（`--disable-*` 其余协议与 brotli/zstd/idn2/ssh 等可选依赖），产物静态库经 `cc_library` 依赖注入 netlib。
+**Decision**: libcurl 8.7.1 源码 autotools 构建（复用已 pin 版本），`--with-openssl=<openssl install>`、`--enable-static --disable-shared`、协议裁剪到 HTTP/HTTPS（`--disable-*` 其余协议与 brotli/zstd/idn2/ssh 等可选依赖），产物静态库经 `cc_library` 依赖注入 cpp_network。
 
 **Rationale**: Android 无发行版可用的系统 curl；源码构建是唯一可控路径。裁剪协议显著缩短构建时间并缩小符号面；仅保留 spec US1 所需能力。
 
@@ -37,15 +37,29 @@
 
 **构建机制**: `rules_foreign_cc`（Bazel 6.5 兼容线）的 `configure_make` / `autotools` 规则承载两个第三方项目；NDK 工具链由 `android_ndk_repository` 提供的 clang wrapper（`CC/CXX/AR/RANLIB` 及 sysroot flags）透传。
 
+**T003/T004 实施修订（2026-08-27）**: 落地时改为 **宿主侧构建脚本 + genrule** 方案（`third_party/scripts/build-android-tls.sh`，单一 genrule 于 `//third_party/androidtls` 固定命名产出 libcrypto/libssl/libcurl.a 与 12 个 `include/curl/*.h` 公共头，经 `cc_library(name="android_curl")` 暴露）。动机：
+1. rules_foreign_cc 的 include 产物为 TreeArtifact（哈希化路径），无法向下游原生 cc 规则提供稳定的 `-I` 引用；链式两段构建还要解决动态 env 注入，调试面大。
+2. 脚本方案在沙箱内直接消费 `--action_env=ANDROID_NDK_HOME`，编译命令全程可见、失败易定位；实测 openssl(19s)+curl(22s) 干净构建约 40s。
+其余约束不变：版本 pin 不动、协议裁剪清单一致、host 分支零触碰。rules_foreign_cc 注册保留作后备。另两个附带修正已实测验证：① `@curl` 改用官方发布包（GitHub 归档缺预生成 configure）；② `.bazelrc` 移除 `--enable_platform_specific_config`——它会在命令行解析后重注宿主平台配置，静默覆盖显式交叉 config。⚠️ 取证注意：toolchain-resolution 模式下 Bazel 输出目录沿用宿主命名（darwin_arm64-fastbuild），产物实际为 Android ELF，必须用 `file` 判定而非目录名。
+
 ## D3: NDK 工具链接入 Bazel
 
-**Decision**: `android_ndk_repository(name = "androidndk", path = "$ANDROID_NDK_HOME")` + 既有 `--config=android_arm64 --platforms=//platforms:android_arm64`；要求环境变量 `ANDROID_NDK_HOME` 指向 r26+；`tools/platform_setup.sh` 增加存在性检测与缺失提示。宿主默认 config（macos_arm64）不变，Android 侧所有第三方目标仅在 android 分支激活。
+**Decision（T001 实施后定稿）**: 采纳 video_codec workspace 已验证的方案——`rules_android_ndk` v0.1.2 提供支持现代 NDK 布局的 `android_ndk_repository(name="androidndk")`；其懒取仓特性保证无 NDK 宿主不触碰该仓库。NDK cc_toolchain 仅经 `.bazelrc` 在 android config 下注册：
 
-**Rationale**: 平台/constraint 层早已就绪（platforms/BUILD），缺口只在仓库规则与工具链解析；Bazel 6.5 内建 ndk repository 虽标记 deprecated 但在该版本稳定可用，避免引入 rules_android 全家桶的迁移成本。文档明示未来升级 Bazel 时替换点。
+```text
+build:android_arm64 --extra_toolchains=@androidndk//:all
+build:android_arm64 --incompatible_enable_cc_toolchain_resolution=true
+```
+
+同时采用其同仓库验证过的 `rules_foreign_cc_dependencies(register_built_tools=False, register_built_pkgconfig_toolchain=False)`——依赖宿主预装 make/pkg-config，跳过 cmake/ninja 源码构建。
+
+**T001 验证证据**: ① 未设置 ANDROID_NDK_HOME 时 host 构建绿色（懒取仓生效）；② ANDROID_NDK_HOME=NDK 28.2.13676358 时 `bazel query @androidndk//:all` 解析出全部工具链；③ `bazel build --config=android_arm64 //src/public:cpp_network` 下 NDK clang 真实进入源码交叉编译（当前仅缺 Phase 2 将提供的 curl 头文件/静态库，属预期）。
+
+**演进记录**: 初版尝试 Bazel 内建 `android_ndk_repository` 被否决——无 NDK/残留安装时急切失败破坏 FR-010、且对 r18+ 移除的旧式 platforms/ 目录误校验；过渡期的自研探测规则方案随后被本参考方案整体取代（探测逻辑的能力由后续 mk/build-android 目标的 shell fail-fast 承担）。
 
 **Alternatives considered**:
-- **rules_android_ndk（社区版）**：更前向但引入新依赖链，本特性交付风险高。Deferred。
-- **手写 cc_toolchain_suite**：完全可控但维护成本高且易错。Rejected。
+- **rules_android_ndk（社区版）**：✅ 本方案——video_codec 实证可用。
+- **手写 cc_toolchain_suite**：维护成本高且易错。Rejected。
 
 ## D4: Android 上的信任锚策略
 
@@ -73,7 +87,7 @@
 ## D6: make push / run 目标设计
 
 **Decision**: 新增 `mk/android.mk`（沿用仓库 mk 模块化约定），目标契约详见 [contracts/make-targets.md](contracts/make-targets.md)：
-- `make build-android`：构建 Android 架构下的 netlib 与设备端可执行程序（device_e2e、http_demo）
+- `make build-android`：构建 Android 架构下的 cpp_network 与设备端可执行程序（device_e2e、http_demo）
 - `make push [DEVICE=serial]`：构建 → `adb [-s] push` 产物与 certs 到 `/data/local/tmp/cpp_network/`
 - `make run [DEVICE=serial]`：前置 `adb reverse tcp:18080/tcp:18443`（可通过 PORT 变量扩展）→ `adb shell` 执行 → 解析 `EXIT:<code>` 透传退出码、输出实时回传
 - 设备选择：DEVICE 显式优先；未指定时枚举 `adb devices`，0 台报错提示授权排查、≥2 台列出候选终止（US3 场景 3/4）

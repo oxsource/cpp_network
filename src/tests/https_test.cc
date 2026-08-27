@@ -9,6 +9,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "test_util.h"
 #include "gtest/gtest.h"
 
 namespace cpp_network {
@@ -114,7 +115,7 @@ TEST_F(HttpsTest, SelfSignedAcceptedWhenSkipVerification) {
 
 TEST_F(HttpsTest, SelfSignedAcceptedWhenCaFileInjected) {
   Options opts = MakeOptions();
-  opts.SetTls(Tls::Builder().SetCaFile("src/tests/certs/ca_cert.pem").Build());
+  opts.SetTls(Tls::Builder().SetCaFile(CertPath("ca_cert.pem")).Build());
   auto client = Client::Create(opts);
   ASSERT_TRUE(client.ok()) << client.error().message();
   Result<Response> res = client->Get(kTlsBase + "/");
@@ -124,7 +125,7 @@ TEST_F(HttpsTest, SelfSignedAcceptedWhenCaFileInjected) {
 
 TEST_F(HttpsTest, SelfSignedAcceptedWhenCaPemInjected) {
   std::string ca_pem;
-  ASSERT_TRUE(ReadFile("src/tests/certs/ca_cert.pem", &ca_pem));
+  ASSERT_TRUE(ReadFile(CertPath("ca_cert.pem"), &ca_pem));
   Options opts = MakeOptions();
   opts.SetTls(Tls::Builder().SetCaPem(ca_pem).Build());
   auto client = Client::Create(opts);
@@ -139,8 +140,8 @@ TEST_F(HttpsTest, ClientCertificateRequiredForMtls) {
   opts.SetTls(
       Tls::Builder()
           .SetVerifyMode(VerifyMode::kSkipVerification)
-          .SetCertificate("src/tests/certs/client_cert.pem",
-                                "src/tests/certs/client_key.pem")
+          .SetCertificate(CertPath("client_cert.pem"),
+                          CertPath("client_key.pem"))
           .Build());
   auto client = Client::Create(opts);
   ASSERT_TRUE(client.ok()) << client.error().message();
@@ -152,8 +153,8 @@ TEST_F(HttpsTest, ClientCertificateRequiredForMtls) {
 TEST_F(HttpsTest, MtlsAcceptedWithInMemoryPem) {
   std::string cert_pem;
   std::string key_pem;
-  ASSERT_TRUE(ReadFile("src/tests/certs/client_cert.pem", &cert_pem));
-  ASSERT_TRUE(ReadFile("src/tests/certs/client_key.pem", &key_pem));
+  ASSERT_TRUE(ReadFile(CertPath("client_cert.pem"), &cert_pem));
+  ASSERT_TRUE(ReadFile(CertPath("client_key.pem"), &key_pem));
   Options opts = MakeOptions();
   opts.SetTls(Tls::Builder()
                   .SetVerifyMode(VerifyMode::kSkipVerification)
@@ -180,7 +181,7 @@ TEST(TlsValidationTest, InvalidInlineCaPemRejected) {
 TEST(TlsValidationTest, ConflictingCaSourcesRejected) {
   Options opts;
   opts.SetTls(Tls::Builder()
-                  .SetCaFile("src/tests/certs/ca_cert.pem")
+                  .SetCaFile(CertPath("ca_cert.pem"))
                   .SetCaPem("-----BEGIN CERTIFICATE-----\n"
                             "-----END CERTIFICATE-----")
                   .Build());
@@ -201,7 +202,7 @@ TEST(TlsValidationTest, MixedPemAndPathClientMaterialRejected) {
   Options opts;
   opts.SetTls(Tls::Builder()
                   .SetCertificate(
-                      "src/tests/certs/client_cert.pem",
+                      CertPath("client_cert.pem"),
                       "-----BEGIN PRIVATE KEY-----\n-----END PRIVATE KEY-----")
                   .Build());
   auto client = Client::Create(opts);

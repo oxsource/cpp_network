@@ -67,6 +67,18 @@ cc_library(
     ],
 )
 
+# Host configs link the system libcurl; the android_arm64 config links the
+# source-built OpenSSL+libcurl static bundle (third_party/androidtls).
+_TLS_LINKOPTS = select({
+    "//platforms:android_arm64_setting": [],
+    "//conditions:default": ["-lcurl"],
+})
+
+_TLS_DEPS = select({
+    "//platforms:android_arm64_setting": ["//third_party/androidtls:android_curl"],
+    "//conditions:default": [],
+})
+
 cc_library(
     name = "engine",
     srcs = ["engine.cc", "detail/curl_mapping.cc"],
@@ -80,8 +92,8 @@ cc_library(
         ":response",
         ":result",
         "//src/tls:tls",
-    ],
-    linkopts = ["-lcurl"],
+    ] + _TLS_DEPS,
+    linkopts = _TLS_LINKOPTS,
 )
 
 cc_library(
@@ -97,6 +109,6 @@ cc_library(
         ":response",
         ":result",
         "//src/tls:tls",
-    ],
-    linkopts = ["-lcurl"],
+    ] + _TLS_DEPS,
+    linkopts = _TLS_LINKOPTS,
 )

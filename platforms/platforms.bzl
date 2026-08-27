@@ -20,7 +20,3 @@ def config_setting_and_platform(name, constraint_values, parents = None):
         constraint_values = constraint_values,
         parents = parents,
     )
-
-def netlib_select(select_map):
-    """Thin wrapper around select() for conditional dependency resolution."""
-    return select(select_map)

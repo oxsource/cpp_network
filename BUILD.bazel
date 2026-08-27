@@ -1,5 +1,5 @@
 alias(
-    name = "netlib",
-    actual = "@cpp_network//src/public:netlib",
+    name = "cpp_network",
+    actual = "@cpp_network//src/public:cpp_network",
     visibility = ["//visibility:public"],
 )

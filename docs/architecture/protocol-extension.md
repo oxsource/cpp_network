@@ -18,7 +18,7 @@
 
 ```text
 ┌─────────────────────────────────────────────┐
-│  Public API (netlib)                        │
+│  Public API (cpp_network)                        │
 │  ├── http/   : HttpClient, HttpRequest, ... │
 │  └── ws/     : WebSocket (v2)               │
 ├─────────────────────────────────────────────┤
@@ -67,7 +67,7 @@ class SyncEngine {
 1. **创建协议层**：`src/websocket/`，实现 `WebSocket::Impl`（持有 easy + 协议上下文）。
 2. **复用引擎**：`SyncEngine::Perform` 传 `configure`（设 `CURLOPT_CONNECT_ONLY=2`、绑定 `curl_ws_*` 读写）+ `on_done`。
 3. **复用配置**：`NetworkConfig`（timeout/TLS/代理）直接使用。
-4. **公共 API**：`netlib::WebSocket`（websocket-api.md）。
+4. **公共 API**：`cpp_network::WebSocket`（websocket-api.md）。
 5. **BUILD**：`src/websocket/BUILD.bazel` 依赖 `//src/http:sync_engine` + `//src/tls`。
 
 ## 约束与不变量
