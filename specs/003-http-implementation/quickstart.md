@@ -18,7 +18,7 @@ opts.SetConnectTimeout(std::chrono::seconds(5))
     .SetFollowRedirects(true);
 
 cpp_network::http::Result<cpp_network::http::Client> client = cpp_network::http::Client::Create(opts);
-if (!client.ok()) { /* options 校验失败 */ }
+if (!client.ok()) { /* options validation failed */ }
 
 auto res = client->Get("https://httpbin.org/get");
 if (!res.ok()) {
@@ -43,12 +43,12 @@ auto res = client->Send(req);
 ### 3. HTTPS + 证书配置
 
 ```cpp
-// 内网 CA：
+// Intranet CA:
 cpp_network::http::Tls tls =
     cpp_network::http::Tls::Builder()
         .SetCaFile("/path/to/custom_ca.pem")
         .Build();
-// 或注入自签证书 / mTLS 客户端证书 / 跳过校验（仅测试）：
+// Or: inject self-signed cert / mTLS client cert / skip verification (testing only):
 cpp_network::http::Tls tls =
     cpp_network::http::Tls::Builder()
         .SetCaPem("-----BEGIN CERTIFICATE-----\n...")
@@ -62,9 +62,9 @@ opts.SetTls(tls);
 ### 4. 指定网卡 / 源地址
 
 ```cpp
-opts.SetInterface("eth1");        // 网卡名
-// 或 opts.SetLocalAddress("192.168.1.100");  // 源 IP
-opts.SetLocalPort(54321);         // 源端口（可选）
+opts.SetInterface("eth1");        // network interface name
+// or opts.SetLocalAddress("192.168.1.100");  // source IP
+opts.SetLocalPort(54321);         // source port (optional)
 ```
 
 ## 测试验证
@@ -72,7 +72,7 @@ opts.SetLocalPort(54321);         // 源端口（可选）
 ```bash
 ./tools/platform_setup.sh
 bazel build //...
-bazel test //...   # smoke + HTTP 集成 + HTTPS + 配置
+bazel test //...   # smoke + HTTP integration + HTTPS + config
 ```
 
 ## Next Steps

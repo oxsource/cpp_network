@@ -17,34 +17,34 @@
 ### 模式 A：kVerifyPeer（默认，安全）
 
 ```text
-用户配置 Tls{verify_mode=kVerifyPeer}
-  → 映射 CURLOPT_SSL_VERIFYPEER=1, CURLOPT_SSL_VERIFYHOST=2
-  → libcurl 执行握手：
-      1) 校验证书链（信任锚 = 系统信任库 或 用户 CA bundle）
-      2) 校验主机名匹配（HOST=2 → 同时校验 subject/SAN 与主机名）
-  → 成功：继续传输
-  → 失败：CURLE_PEER_FAILED_VERIFICATION
-       → 引擎映射 ErrorCode::kCertificateVerificationFailed
-       → Send 返回 Result<Error>
+User configures Tls{verify_mode=kVerifyPeer}
+  → Map to CURLOPT_SSL_VERIFYPEER=1, CURLOPT_SSL_VERIFYHOST=2
+  → libcurl performs handshake:
+      1) Verify certificate chain (trust anchor = system trust store or user CA bundle)
+      2) Verify hostname match (HOST=2 → checks subject/SAN against hostname)
+  → Success: continue transfer
+  → Failure: CURLE_PEER_FAILED_VERIFICATION
+       → Engine maps to ErrorCode::kCertificateVerificationFailed
+       → Send returns Result<Error>
 ```
 
 ### 模式 B：kSkipVerification（测试/自签）
 
 ```text
-用户配置 Tls{verify_mode=kSkipVerification}
-  → 映射 CURLOPT_SSL_VERIFYPEER=0, CURLOPT_SSL_VERIFYHOST=0
-  → libcurl 不校验证书链、不校验主机名（仅完成加密握手）
-  → 仅限测试环境；文档明确安全警告
+User configures Tls{verify_mode=kSkipVerification}
+  → Map to CURLOPT_SSL_VERIFYPEER=0, CURLOPT_SSL_VERIFYHOST=0
+  → libcurl skips certificate chain and hostname verification (encryption-only handshake)
+  → Test environments only; documentation states the security warning explicitly
 ```
 
 ### 模式 C：自定义 CA（内部 CA/私有 PKI）
 
 ```text
-用户配置 Tls.SetCaFile(path) 或 SetCaPem(pem)
-  → 拼接 PEM bundle → CURLOPT_CAINFO（或 CAINFO_BLOB）
-  → verify_mode 仍为 kVerifyPeer（默认）
-  → 信任锚 = 用户 CA bundle（替代系统信任库，而非追加）
-  → 校验流程同模式 A
+User configures Tls.SetCaFile(path) or SetCaPem(pem)
+  → Concatenate PEM bundle → CURLOPT_CAINFO (or CAINFO_BLOB)
+  → verify_mode remains kVerifyPeer (default)
+  → Trust anchor = user CA bundle (replaces system trust store, not appends to it)
+  → Verification flow same as Mode A
 ```
 
 ## 决策：信任锚语义

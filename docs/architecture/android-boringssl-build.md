@@ -20,8 +20,8 @@
 
 ```text
 WORKSPACE (netlib_deps.bzl)
- ├── @boringssl        # http_archive: BoringSSL 源码（CMake 项目）
- └── @libcurl          # http_archive: curl 源码
+ ├── @boringssl        # http_archive: BoringSSL source (CMake project)
+ └── @libcurl          # http_archive: curl source
 ```
 
 - BoringSSL 提供 Bazel 构建：官方 repo 自带 `BUILD`（`ssl`、`crypto` 目标），可直接 `http_archive` 引入。
@@ -43,21 +43,21 @@ WORKSPACE (netlib_deps.bzl)
 ```text
 third_party/
 ├── boringssl/
-│   ├── BUILD.bazel          # re-export @boringssl//:ssl, @boringssl//:crypto（官方 BUILD 已有）
-│   └── boringssl.bzl        # 版本锁定 + 校验
+│   ├── BUILD.bazel          # re-export @boringssl//:ssl, @boringssl//:crypto (provided by official BUILD)
+│   └── boringssl.bzl        # Version pinning + checksum verification
 ├── libcurl/
-│   ├── BUILD.bazel          # cc_library 封装 curl 源码（静态）
-│   │   ├── :libcurl_openssl      # host：--with-openssl 语义
-│   │   └── :libcurl_boringssl    # android：链接 @boringssl
-│   ├── curl_config_android_arm64.h   # 预生成的 Android config（由官方 curl_config.h 裁剪）
-│   ├── curl_config_host.h            # host config（见 host-openssl-build.md）
+│   ├── BUILD.bazel          # cc_library wrapping curl sources (static)
+│   │   ├── :libcurl_openssl      # host: --with-openssl semantics
+│   │   └── :libcurl_boringssl    # android: links @boringssl
+│   ├── curl_config_android_arm64.h   # Pregenerated Android config (trimmed from official curl_config.h)
+│   ├── curl_config_host.h            # Host config (see host-openssl-build.md)
 │   └── curl.bzl
 ```
 
 ## libcurl_boringssl BUILD 要点
 
 ```python
-# third_party/libcurl/BUILD.bazel（Android 分支示意）
+# third_party/libcurl/BUILD.bazel (Android branch sketch)
 cc_library(
     name = "libcurl_boringssl",
     srcs = glob(["lib/**/*.c"]) + [
@@ -70,7 +70,7 @@ cc_library(
     deps = [
         "@boringssl//:ssl",
         "@boringssl//:crypto",
-        # 依赖 @platforms//os:android 工具链提供的系统 libc 等
+        # Relies on system libc etc. provided by the @platforms//os:android toolchain
     ],
     linkopts = select({
         "@platforms//os:android": ["-lz", "-llog"],

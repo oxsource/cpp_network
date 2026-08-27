@@ -15,7 +15,7 @@
 ```cpp
 class Client {
  public:
-  static Result<Client> Create(const Options& options);   // Options::Validate 前置校验
+  static Result<Client> Create(const Options& options);   // Validates up front via Options::Validate
 
   Result<Response> Get(const std::string& url);
   Result<Response> Get(const Request& req);
@@ -25,14 +25,14 @@ class Client {
   Result<Response> Delete(const std::string& url);
   Result<Response> Patch(const std::string& url, const std::string& body);
   Result<Response> Head(const std::string& url);
-  Result<Response> SendOptions(const std::string& url);   // "OPTIONS"（避免与 Options 类型重名）
+  Result<Response> SendOptions(const std::string& url);   // "OPTIONS" (avoids clashing with the Options type)
   Result<Response> Send(const Request& req);
 
   void Close();
   ~Client();
-  Client(Client&&) noexcept;              // 可移动
+  Client(Client&&) noexcept;              // Movable
   Client& operator=(Client&&) noexcept;
-  // 不可拷贝
+  // Not copyable
 };
 ```
 
@@ -48,7 +48,7 @@ class Client {
 ## 使用示例
 
 ```cpp
-auto client = cpp_network::http::Client::Create(opts);   // opts: Options 链式配置
+auto client = cpp_network::http::Client::Create(opts);   // opts: chained Options configuration
 if (!client.ok()) { /* client.error() */ }
 auto res = client->Get("https://example.com/");
 if (res.ok() && res->ok()) { /* res->status(), res->body() */ }

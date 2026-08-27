@@ -36,10 +36,10 @@
 ## 超时解析优先级（EffectiveHardTimeout）
 
 ```text
-request.timeout()            → TIMEOUT_MS, 错误码 kTotalTimeout
-else total_timeout() > 0     → TIMEOUT_MS, 错误码 kTotalTimeout
-else write_timeout() > 0     → TIMEOUT_MS, 错误码 kWriteTimeout
-else                         → 不设置, TIMEDOUT 归为 kConnectionTimeout
+request.timeout()            → TIMEOUT_MS, error code kTotalTimeout
+else total_timeout() > 0     → TIMEOUT_MS, error code kTotalTimeout
+else write_timeout() > 0     → TIMEOUT_MS, error code kWriteTimeout
+else                         → not set, TIMEDOUT classified as kConnectionTimeout
 ```
 
 注意：write_timeout 有默认值 30s，因此**默认配置下所有传输有 30s 硬上限**；长传输需显式调大或置 0。

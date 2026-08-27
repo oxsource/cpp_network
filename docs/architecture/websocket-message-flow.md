@@ -73,7 +73,7 @@ Receive()
 ### 重连策略（同步辅助函数）
 
 ```cpp
-// 库可提供一个同步重连辅助（或上层自行循环）：
+// The library may offer a synchronous reconnect helper (or callers can loop themselves):
 struct WsReconnectOptions {
   bool enabled = false;
   int max_attempts = 3;
@@ -91,8 +91,8 @@ Result<WebSocket> ConnectWithRetry(const std::string& url,
 for attempt in 0..max_attempts:
   auto ws = WebSocket::Connect(url, config);
   if (ws.ok()) return ws;
-  if (!opts.enabled || attempt == max_attempts-1) return ws;   // 最后一次
-  std::this_thread::sleep_for(opts.backoff * attempt);         // 简单退避
+  if (!opts.enabled || attempt == max_attempts-1) return ws;   // last attempt
+  std::this_thread::sleep_for(opts.backoff * attempt);         // simple backoff
 return 最后一次错误;
 ```
 

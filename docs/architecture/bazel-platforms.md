@@ -19,27 +19,27 @@
 
 ```text
 WORKSPACE              # workspace(name = "cpp_network")
-BUILD.bazel            # 根 BUILD：alias //:netlib -> //src/public:netlib
+BUILD.bazel            # Root BUILD: alias //:netlib -> //src/public:netlib
 .bazelversion          # 6.5.0
-.bazelrc               # 项目级配置（提交）
+.bazelrc               # Project-level config (committed)
 platforms/
-├── BUILD              # 平台定义
-└── platforms.bzl      # config_setting_and_platform 宏 + netlib_select
+├── BUILD              # Platform definitions
+└── platforms.bzl      # config_setting_and_platform macro + netlib_select
 third_party/
-├── libcurl/           # 占位注释（当前链接系统 -lcurl，见 host-openssl-build.md）
-├── openssl/           # 占位注释
-├── bazel_skylib/      # 真实依赖
-├── googletest/        # 测试依赖封装
+├── libcurl/           # Placeholder comment (currently links system -lcurl, see host-openssl-build.md)
+├── openssl/           # Placeholder comment
+├── bazel_skylib/      # Real dependencies
+├── googletest/        # Test dependency wrapper
 src/
-├── http/              # HTTP 实现（engine + curl_mapping）
-├── tls/               # Tls 校验（tls.cc）
-├── websocket/         # v2 占位
-├── public/include/http/  # 公共 API 头（http_ 前缀）
+├── http/              # HTTP implementation (engine + curl_mapping)
+├── tls/               # Tls validation (tls.cc)
+├── websocket/         # v2 placeholder
+├── public/include/http/  # Public API headers (http_ prefixed)
 └── tests/
 examples/
-└── consumer_demo/ http_demo/   # 独立 workspace 消费示例
+└── consumer_demo/ http_demo/   # Standalone workspace consumption examples
 tools/
-└── platform_setup.sh          # 主机平台检测，生成 .user.bazelrc
+└── platform_setup.sh          # Host platform detection, generates .user.bazelrc
 ```
 
 ## 平台定义（platforms/platforms.bzl）
@@ -131,14 +131,14 @@ try-import %workspace%/.user.bazelrc
 TLS 后端统一为 OpenSSL（全平台 host + Android）。**当前落地**：`src/tls/BUILD.bazel` 仅依赖公共头（校验逻辑），CURLOPT 映射在 `src/http/detail/curl_mapping.cc`，libcurl 经系统库 `-lcurl` 链接：
 
 ```python
-# src/tls/BUILD.bazel（实际）
+# src/tls/BUILD.bazel (as implemented)
 cc_library(
     name = "tls",
     srcs = ["tls.cc"],
     deps = ["@cpp_network//src/public:public_headers"],
 )
 
-# src/http/BUILD.bazel 的 engine/client 目标带 linkopts = ["-lcurl"]
+# engine/client targets in src/http/BUILD.bazel carry linkopts = ["-lcurl"]
 ```
 
 要点：

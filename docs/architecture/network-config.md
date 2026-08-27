@@ -22,22 +22,22 @@ struct Proxy {
 
 class Options {
  public:
-  // 链式 setter（返回 Options&）与只读访问器一一对应：
-  Options& SetConnectTimeout(ms);        // 默认 10s
-  Options& SetReadTimeout(ms);           // 默认 30s
-  Options& SetWriteTimeout(ms);          // 默认 30s
-  Options& SetTotalTimeout(ms);          // 默认 0 = 不限
-  Options& SetFollowRedirects(bool);     // 默认 true
-  Options& SetMaxRedirects(int);         // 默认 20
-  Options& SetInterface(name);           // 指定网卡
+  // Chained setters (return Options&) map one-to-one to read-only accessors:
+  Options& SetConnectTimeout(ms);        // default 10s
+  Options& SetReadTimeout(ms);           // default 30s
+  Options& SetWriteTimeout(ms);          // default 30s
+  Options& SetTotalTimeout(ms);          // default 0 = unlimited
+  Options& SetFollowRedirects(bool);     // default true
+  Options& SetMaxRedirects(int);         // default 20
+  Options& SetInterface(name);           // network interface to bind
   Options& SetLocalAddress(ip);
   Options& SetLocalPort(port);
   Options& SetProxy(host, port);
-  Options& SetMaxConnectionsPerHost(n);  // 默认 5
-  Options& SetKeepAlive(ms);             // 默认 120s（TCP keepalive 空闲窗口）
+  Options& SetMaxConnectionsPerHost(n);  // default 5
+  Options& SetKeepAlive(ms);             // default 120s (TCP keepalive idle window)
   Options& SetTls(const Tls&);
 
-  Result<void> Validate() const;         // 含 Tls::Validate()
+  Result<void> Validate() const;         // includes Tls::Validate()
 };
 ```
 

@@ -36,8 +36,8 @@
 namespace netlib {
 
 struct WsMessage {
-  std::vector<uint8_t> data;   // 原始字节
-  bool is_text = true;         // text vs binary 帧
+  std::vector<uint8_t> data;   // Raw bytes
+  bool is_text = true;         // text vs binary frame
 };
 
 enum class WsCloseCode {
@@ -47,19 +47,19 @@ enum class WsCloseCode {
 
 class WebSocket {
  public:
-  // 建立连接（HTTP Upgrade）。阻塞直到握手完成。成功返回 WebSocket。
+  // Establishes a connection (HTTP Upgrade). Blocks until the handshake completes.
   static Result<WebSocket> Connect(const std::string& url,
                                    const NetworkConfig& config);
 
   bool IsOpen() const;
 
-  // 发送消息（阻塞直到写入完成）。
+  // Sends a message (blocks until the write completes).
   Result<void> Send(const WsMessage& msg);
 
-  // 接收下一帧（阻塞直到一帧到达）。成功返回消息。
+  // Receives the next frame (blocks until one arrives). Returns the message on success.
   Result<WsMessage> Receive();
 
-  // 发送关闭帧；等待对端 close 或超时。
+  // Sends a close frame; waits for the peer to close or for timeout.
   Result<void> Close(WsCloseCode code, const std::string& reason);
 
   ~WebSocket();

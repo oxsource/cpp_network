@@ -35,19 +35,19 @@
 ```text
 third_party/
 ├── openssl/
-│   ├── BUILD.bazel          # 封装 @openssl//:ssl, @openssl//:crypto + libcrypto
-│   └── openssl.bzl          # 版本锁定（3.x LTS）+ sha256 校验
+│   ├── BUILD.bazel          # Wraps @openssl//:ssl, @openssl//:crypto + libcrypto
+│   └── openssl.bzl          # Version pinning (3.x LTS) + sha256 verification
 └── libcurl/
     ├── BUILD.bazel
-    │   └── :libcurl_openssl      # 全平台目标（OpenSSL 后端，host + Android）
-    ├── curl_config.h             # 全平台 config（含 USE_OPENSSL，按平台裁剪）
+    │   └── :libcurl_openssl      # All-platform target (OpenSSL backend, host + Android)
+    ├── curl_config.h             # All-platform config (includes USE_OPENSSL, trimmed per platform)
     └── curl.bzl
 ```
 
 ## libcurl_openssl BUILD 要点
 
 ```python
-# third_party/libcurl/BUILD.bazel（host 分支示意）
+# third_party/libcurl/BUILD.bazel (host branch sketch)
 cc_library(
     name = "libcurl_openssl",
     srcs = glob(["lib/**/*.c"]) + [
@@ -63,7 +63,7 @@ cc_library(
     ],
     linkopts = [
         "-lz",
-        # macOS/Linux 差异：由 select() 按平台补充
+        # macOS/Linux differences: supplied per platform by select()
     ],
     visibility = ["//visibility:public"],
 )

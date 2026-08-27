@@ -17,14 +17,14 @@
 ## 类型定义
 
 ```cpp
-// src/public/include/netlib/network_config.h（RetryPolicy 定义见 network-config.md）
+// src/public/include/netlib/network_config.h (RetryPolicy definition in network-config.md)
 struct RetryPolicy {
-  int max_retries = 0;                     // 0 = 不重试（默认）
+  int max_retries = 0;                     // 0 = no retry (default)
   std::chrono::milliseconds retry_delay{100};
   enum class Condition {
-    kNone,              // 不重试
-    kNetworkError,      // 仅网络类错误重试（DNS/连接/超时等，见下）
-    kNetworkErrorOr5xx, // 网络错误 + 5xx 状态码重试
+    kNone,              // no retry
+    kNetworkError,      // retry network-type errors only (DNS/connect/timeout etc., see below)
+    kNetworkErrorOr5xx, // retry on network errors + 5xx status codes
   };
   Condition condition = Condition::kNone;
 };
@@ -33,7 +33,7 @@ struct RetryPolicy {
 ## 上层重试实现（调用方模式）
 
 ```cpp
-// 上层（调用方）实现重试的参考模式：
+// Reference pattern for caller-side (upper-layer) retry implementation:
 Result<HttpResponse> RetrySend(HttpClient& client, const HttpRequest& req,
                                const RetryPolicy& policy) {
   int attempts = 0;

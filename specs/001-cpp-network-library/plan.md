@@ -54,18 +54,18 @@ specs/001-cpp-network-library/
 
 ```text
 src/
-├── http/                    # libcurl 同步 HTTP 引擎
-│   ├── client.h / .cc       # HttpClient（同步 API：Get/Post/.../Send 返回 HttpResponse）
+├── http/                    # libcurl synchronous HTTP engine
+│   ├── client.h / .cc       # HttpClient (sync API: Get/Post/.../Send return HttpResponse)
 │   ├── request.h / .cc      # HttpRequest
 │   ├── response.h / .cc     # HttpResponse
-│   ├── config.h / .cc       # NetworkConfig（映射为 libcurl 选项）
-│   └── engine.h / .cc       # 同步传输：curl_easy_perform / curl_multi 同步轮询 + 连接池
-├── websocket/               # (Future, libcurl 7.86+) WebSocket 同步 API
+│   ├── config.h / .cc       # NetworkConfig (mapped to libcurl options)
+│   └── engine.h / .cc       # synchronous transfer: curl_easy_perform / curl_multi sync polling + connection pool
+├── websocket/               # (Future, libcurl 7.86+) WebSocket sync API
 │   └── ...
-├── tls/                     # TLS 配置映射（libcurl SSL 后端构建时选择）
-│   ├── tls_config.h         # TlsConfig → CURLOPT_SSL_* 映射
+├── tls/                     # TLS configuration mapping (libcurl SSL backend selected at build time)
+│   ├── tls_config.h         # TlsConfig → CURLOPT_SSL_* mapping
 │   ├── openssl/             # (build-only) host
-│   └── openssl/           # (build-only) OpenSSL 全平台 TLS 后端
+│   └── openssl/           # (build-only) OpenSSL cross-platform TLS backend
 ├── public/                  # Public API surface
 │   └── include/netlib/
 │       ├── netlib.h         # Umbrella header

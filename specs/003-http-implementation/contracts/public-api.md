@@ -15,7 +15,7 @@
 
 ```text
 src/public/include/http/
-├── http_umbrella.h   # umbrella：include 下列全部
+├── http_umbrella.h   # umbrella: includes all headers below
 ├── client.h          # Client
 ├── request.h         # Request / Method
 ├── response.h        # Response / Stream
@@ -23,7 +23,7 @@ src/public/include/http/
 ├── tls.h             # Tls / VerifyMode
 ├── error.h           # Error / ErrorCode
 ├── result.h          # Result<T>
-└── export.h          # CPP_NETWORK_HTTP_API 导出宏
+└── export.h          # CPP_NETWORK_HTTP_API export macro
 ```
 
 **注**: 公共导出宏命名 `CPP_NETWORK_HTTP_API`（对齐 `cpp_network::http` 命名空间）。
@@ -61,9 +61,9 @@ template <typename T>
 class Result {
  public:
   bool ok() const;
-  const T& value() const;   // ok()==true 有效
+  const T& value() const;   // valid when ok()==true
   T& value();
-  const Error& error() const;  // ok()==false 有效
+  const Error& error() const;  // valid when ok()==false
   T TakeValue();
   static Result<T> Ok(T value);
   static Result<T> Err(Error error);
@@ -76,6 +76,36 @@ class Result {
 enum class Method { kGet, kPost, kPut, kDelete, kPatch, kHead, kOptions };
 ```
 
+### Headers
+
+```cpp
+// Order-preserving multi-map of header fields that allows duplicates
+// (modeled on okhttp3.Headers); immutable value type.
+// Lookup (Get/GetAll/Has) is case-insensitive.
+class Headers {
+ public:
+  std::optional<std::string> Get(const std::string& name) const;   // first match
+  std::vector<std::string> GetAll(const std::string& name) const;  // all values, in order
+  bool Has(const std::string& name) const;
+  int size() const;                                    // number of field lines (incl. duplicates)
+  const std::string& name(int index) const;
+  const std::string& value(int index) const;
+  const std::vector<std::pair<std::string, std::string>>& fields() const;
+
+  bool operator==(const Headers&) const;   // name case-insensitive; value/order exact
+  bool operator!=(const Headers&) const;
+
+  class Builder {
+   public:
+    Builder& Add(const std::string& name, const std::string& value);   // appends
+    Builder& Set(const std::string& name, const std::string& value);   // replaces all with same name
+    Builder& Remove(const std::string& name);
+    Builder& Clear();
+    Headers Build() const;
+  };
+};
+```
+
 ### Request
 
 ```cpp
@@ -83,7 +113,7 @@ class Request {
  public:
   Method method() const;
   const std::string& url() const;
-  const Headers& headers() const;        // vector<pair<string,string>>，保序
+  const Headers& headers() const;        // order-preserving multi-map w/ duplicates; case-insensitive lookup
   bool has_body() const;
   const std::string& body() const;
   const std::optional<std::chrono::milliseconds>& timeout() const;
@@ -94,10 +124,10 @@ class Request {
     Builder& Method(Method m);
     Builder& Url(const std::string& url);
     Builder& Header(const std::string& name, const std::string& value);
-    Builder& Body(const std::string& body);        // 默认 Content-Type: text/plain
+    Builder& Body(const std::string& body);        // defaults to Content-Type: text/plain
     Builder& JsonBody(const std::string& json);    // Content-Type: application/json
     Builder& Timeout(std::chrono::milliseconds ms);
-    Result<Request> Build() const;                 // 非法 → kInvalidArgument
+    Result<Request> Build() const;                 // invalid → kInvalidArgument
   };
 };
 ```
@@ -111,8 +141,8 @@ class Response {
   const std::string& status_text() const;
   const Headers& headers() const;
   bool has_body() const;
-  const std::string& body() const;             // 缓冲模式
-  std::optional<Stream> stream();              // 大 body 流式（>8MB）
+  const std::string& body() const;             // buffered mode
+  std::optional<Stream> stream();              // streaming for large bodies (>8MB)
   bool ok() const;                             // 2xx
   const std::string& effective_url() const;
 };
@@ -123,21 +153,21 @@ class Response {
 ```cpp
 enum class VerifyMode { kVerifyPeer, kSkipVerification };
 
-// 不可变配置对象；经 Tls::Builder 构建后不可再修改。
+// Immutable configuration object; cannot be modified once built via Tls::Builder.
 class Tls {
  public:
-  // 只读访问器：verify_mode() / ca_pem() / ca_file() /
-  //            client_cert() / client_key() / sni()
+  // Read-only accessors: verify_mode() / ca_pem() / ca_file() /
+  //                      client_cert() / client_key() / sni()
 
   class Builder {
    public:
-    // CA 证书：内存 PEM 或文件路径（互斥，Validate() 拒绝冲突）
+    // CA certificates: in-memory PEM or file path (mutually exclusive; Validate() rejects both)
     Builder& SetCaPem(const std::string& pem);
     Builder& SetCaFile(const std::string& path);
-    // 客户端证书（mTLS）：PEM 或文件路径
+    // Client certificate (mTLS): PEM or file path
     Builder& SetCertificate(const std::string& cert,
                             const std::string& key);
-    // SNI / 校验模式
+    // SNI / verify mode
     Builder& SetSni(const std::string& hostname);
     Builder& SetVerifyMode(VerifyMode mode);
 
@@ -157,10 +187,10 @@ class Options {
   Options& SetTotalTimeout(std::chrono::milliseconds);
   Options& SetFollowRedirects(bool);
   Options& SetMaxRedirects(int);
-  // 指定网卡 / 源地址 / 源端口
+  // Network interface / source address / source port
   Options& SetInterface(const std::string& name);       // "eth1" / IP / "if!eth1" / "host!ip"
-  Options& SetLocalAddress(const std::string& ip);      // 源 IP
-  Options& SetLocalPort(int port);                      // 源端口（可选）
+  Options& SetLocalAddress(const std::string& ip);      // source IP
+  Options& SetLocalPort(int port);                      // source port (optional)
   Options& SetProxy(const std::string& host, uint16_t port);
   Options& SetMaxConnectionsPerHost(int);
   Options& SetKeepAlive(std::chrono::milliseconds);
@@ -174,7 +204,7 @@ class Options {
 ```cpp
 class Client {
  public:
-  // 构建；Options 校验失败返回错误。
+  // Creates the client; returns an error if Options validation fails.
   static Result<Client> Create(const Options& options);
 
   Result<Response> Get(const std::string& url);
@@ -186,11 +216,11 @@ class Client {
   Result<Response> Patch(const std::string& url, const std::string& body);
   Result<Response> Head(const std::string& url);
   Result<Response> Options(const std::string& url);
-  Result<Response> Send(const Request& req);   // 通用入口
+  Result<Response> Send(const Request& req);   // general entry point
 
   void Close();
   ~Client();
-  // 不可拷贝
+  // Not copyable
 };
 ```
 
@@ -212,10 +242,10 @@ class Client {
 
 ```bash
 ./tools/platform_setup.sh
-bazel build //...                         # 零 error/warning
-bazel test //...                          # smoke + http_integration + https + config 全部通过
-# 本地集成测试覆盖：
+bazel build //...                         # zero errors/warnings
+bazel test //...                          # all pass: smoke + http_integration + https + config
+# Local integration test coverage:
 #   US1: 200/404/POST-JSON
-#   US2: HTTPS 远程 + 自签证书(默认失败/注入CA/skip) + mTLS
-#   US3: 连接超时/重定向/指定网卡
+#   US2: remote HTTPS + self-signed cert (fails by default / inject CA / skip) + mTLS
+#   US3: connect timeout / redirects / interface binding
 ```

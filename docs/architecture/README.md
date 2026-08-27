@@ -8,30 +8,30 @@
 
 ```text
 docs/architecture/
-├── README.md                  # 本文档：规范与导航
+├── README.md                  # This doc: conventions and navigation
 ├── adr/                       # Architecture Decision Records
-│   └── adr-XXX-title.md       # 编号 ADR 文档（历史决策记录）
-├── bazel-platforms.md         # Bazel 工作区与平台定义（已落地，差异见文首横幅）
-├── core-error.md              # 错误码体系（已实现：ErrorCode/Error/Result + MapCurlError）
-├── sync-engine.md             # 同步传输引擎（已实现：Engine = 共享 CURLM + curl_multi_poll）
-├── tls-backend-selection.md   # TLS 后端选型（全平台 OpenSSL 经 libcurl；布局差异见横幅）
-├── http-client-api.md         # Client 同步 API（已实现）
-├── http-request.md            # Request 值类型（已实现）
-├── http-response.md           # Response 值类型（已实现；流式 deferred）
-├── http-transfer-lifecycle.md # HTTP 传输生命周期（已实现）
-├── http-config-mapping.md     # Options/Request → libcurl 映射（已实现）
-├── tls-config.md              # Tls 类型设计（已实现：内存 PEM/文件路径/mTLS/SNI/校验）
-├── tls-cert-validation.md     # 证书校验流程（已实现，含测试对照表）
-├── android-boringssl-build.md # （⚠️废弃，历史）Android BoringSSL 构建集成 — 已改全平台 OpenSSL
-├── host-openssl-build.md      # host OpenSSL 构建（源码构建为后续任务；当前系统 -lcurl）
-├── network-config.md          # Options 配置实体（已实现；取代 NetworkConfig 设计稿）
-├── retry-policy.md            # 重试策略（上层实现参考；库内无 RetryPolicy 类型）
-├── proxy-config.md            # 代理配置（已实现：HTTP 代理）
-├── connection-pool.md         # 连接池调优（已实现：委托 libcurl）
-├── websocket-api.md           # WebSocket API 设计（v2 草案，未实现）
-├── protocol-extension.md      # 协议扩展机制（v2 方向，TransferOptions 未实现）
-├── websocket-message-flow.md  # WebSocket 消息流设计（v2 草案，未实现）
-└── requirement-traceability.md # 需求追踪矩阵（含 spec 003 实现状态说明）
+│   └── adr-XXX-title.md       # Numbered ADR documents (historical decision records)
+├── bazel-platforms.md         # Bazel workspace & platform definitions (implemented; see top banner for diffs)
+├── core-error.md              # Error code system (implemented: ErrorCode/Error/Result + MapCurlError)
+├── sync-engine.md             # Sync transfer engine (implemented: Engine = shared CURLM + curl_multi_poll)
+├── tls-backend-selection.md   # TLS backend selection (all-platform OpenSSL via libcurl; see banner for layout diffs)
+├── http-client-api.md         # Client sync API (implemented)
+├── http-request.md            # Request value type (implemented)
+├── http-response.md           # Response value type (implemented; streaming deferred)
+├── http-transfer-lifecycle.md # HTTP transfer lifecycle (implemented)
+├── http-config-mapping.md     # Options/Request → libcurl mapping (implemented)
+├── tls-config.md              # Tls type design (implemented: in-memory PEM/file path/mTLS/SNI/validation)
+├── tls-cert-validation.md     # Certificate validation flow (implemented, incl. test comparison table)
+├── android-boringssl-build.md # (⚠️ deprecated, historical) Android BoringSSL build integration — replaced by all-platform OpenSSL
+├── host-openssl-build.md      # Host OpenSSL build (source build deferred; currently system -lcurl)
+├── network-config.md          # Options config entity (implemented; supersedes NetworkConfig draft)
+├── retry-policy.md            # Retry policy (reference for upper layers; no RetryPolicy type in library)
+├── proxy-config.md            # Proxy configuration (implemented: HTTP proxy)
+├── connection-pool.md         # Connection pool tuning (implemented: delegated to libcurl)
+├── websocket-api.md           # WebSocket API design (v2 draft, not implemented)
+├── protocol-extension.md      # Protocol extension mechanism (v2 direction, TransferOptions not implemented)
+├── websocket-message-flow.md  # WebSocket message flow design (v2 draft, not implemented)
+└── requirement-traceability.md # Requirement traceability matrix (incl. spec 003 implementation status)
 ```
 
 > **已移除**：`core-executor.md` / `core-promise.md` / `curl-engine-bridge.md`（异步抽象，2026-08-26 同步 API 重构后合并为 `sync-engine.md`）。

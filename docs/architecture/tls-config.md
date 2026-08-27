@@ -20,24 +20,24 @@ namespace cpp_network {
 namespace http {
 
 enum class VerifyMode {
-  kVerifyPeer,         // 默认：校验对端证书 + 主机名（安全默认）
-  kSkipVerification,   // 跳过证书与主机名校验（仅测试/自签场景）
+  kVerifyPeer,         // Default: verify peer certificate + hostname (secure default)
+  kSkipVerification,   // Skip certificate and hostname verification (testing/self-signed only)
 };
 
 class Tls {
  public:
-  Tls() = default;     // 默认即 kVerifyPeer；实例创建后不可再修改
+  Tls() = default;     // Defaults to kVerifyPeer; immutable after creation
 
-  Result<void> Validate() const;                              // 见下
-  // 只读访问器：verify_mode() / ca_pem() / ca_file() / client_cert() /
-  //            client_key() / sni()
+  Result<void> Validate() const;                              // See below
+  // Read-only accessors: verify_mode() / ca_pem() / ca_file() /
+  //                      client_key() / sni()
 
-  class Builder {    // 不可变 Tls 的链式构建器
+  class Builder {    // Chained builder for immutable Tls
    public:
     Builder& SetVerifyMode(VerifyMode mode);
-    Builder& SetCaPem(const std::string& pem);                  // 内存 PEM
-    Builder& SetCaFile(const std::string& path);                // 文件路径
-    Builder& SetCertificate(const std::string& cert,            // mTLS：PEM 或文件路径
+    Builder& SetCaPem(const std::string& pem);                  // In-memory PEM
+    Builder& SetCaFile(const std::string& path);                // File path
+    Builder& SetCertificate(const std::string& cert,            // mTLS: PEM or file path
                             const std::string& key);
     Builder& SetSni(const std::string& hostname);
     Tls Build() const;

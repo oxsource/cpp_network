@@ -15,18 +15,18 @@
 ```cpp
 enum class ErrorCode {
   kNone = 0,
-  kInvalidArgument,             // 参数/配置校验失败（Client::Create / Builder::Build 前置拒绝）
-  kInvalidState,                // Client 已 Close 后调用 Send 等
-  kProtocolError,               // 协议层失败（含缺状态行、读写错误）
+  kInvalidArgument,             // Argument/config validation failure (rejected up front by Client::Create / Builder::Build)
+  kInvalidState,                // e.g. calling Send after Client is closed
+  kProtocolError,               // Protocol-level failure (missing status line, read/write errors)
   kMalformedResponse,
   kUnsupportedProtocol,
   kDnsResolutionFailed,
   kConnectionRefused,
   kConnectionClosed,
   kConnectionTimeout,
-  kReadTimeout,                 // 低速率检测触发（空闲读超时）
-  kWriteTimeout,                // write_timeout 作为硬上限兜底时触发
-  kTotalTimeout,                // total_timeout / 请求级 timeout 触发
+  kReadTimeout,                 // Triggered by low-speed detection (idle read timeout)
+  kWriteTimeout,                // Triggered when write_timeout fires as hard-cap fallback
+  kTotalTimeout,                // Triggered by total_timeout / request-level timeout
   kTlsHandshakeFailed,
   kCertificateVerificationFailed,
   kTooManyRedirects,
@@ -35,16 +35,16 @@ enum class ErrorCode {
   kInternalError,
 };
 
-const char* ErrorCodeToString(ErrorCode code);   // 返回枚举名字符串；未知值返回 "kUnknown"
+const char* ErrorCodeToString(ErrorCode code);   // Returns enum name string; returns "kUnknown" for unknown values
 
-class Error {                 // header-only 值类型
+class Error {                 // Header-only value type
   ErrorCode code() const;
   const std::string& message() const;
   bool ok() const;            // code == kNone
 };
 
 template <typename T> class Result { /* ok()/value()/error()/TakeValue() */ };
-template <> class Result<void>;     // 校验场景用
+template <> class Result<void>;     // For validation scenarios
 ```
 
 > 相比 001 设计稿的落地差异：删除 `kConnectionPoolExhausted`（连接池委托 libcurl 排队，无耗尽错误路径）；内部 `MapCurlError` 为 engine.cc 匿名命名空间私有函数，签名 `(CURLcode, const std::string&, ErrorCode)`，不是公共 API。

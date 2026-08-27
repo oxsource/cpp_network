@@ -53,27 +53,27 @@ specs/003-http-implementation/
 ### Source Code (repository root)
 
 ```text
-src/http/                        # HTTP 实现（替换占位）
+src/http/                        # HTTP implementation (replaces placeholder)
 ├── BUILD.bazel
-├── client.h / client.cc         # netlib::Client（同步 API）
+├── client.h / client.cc         # netlib::Client (sync API)
 ├── request.h / request.cc       # netlib::Request + Builder
-├── response.h / response.cc     # netlib::Response（含流式 BodyStream）
-├── options.h / options.cc       # netlib::Options（超时/重定向/网卡/连接池）
-├── tls.h / tls.cc               # netlib::Tls（证书配置）
+├── response.h / response.cc     # netlib::Response (with streaming BodyStream)
+├── options.h / options.cc       # netlib::Options (timeouts/redirects/interface/connection pool)
+├── tls.h / tls.cc               # netlib::Tls (certificate config)
 ├── result.h                     # netlib::Result<T>
 ├── error.h / error.cc           # netlib::Error + ErrorCode
-├── engine.h / engine.cc         # 同步传输引擎（共享 CURLM + curl_multi_poll）
+├── engine.h / engine.cc         # sync transfer engine (shared CURLM + curl_multi_poll)
 └── detail/
-    └── curl_mapping.cc          # Request/Options/Tls → CURLOPT 映射
-src/public/include/http/       # 公共 API 头（由 src/http 导出，http_ 前缀）
-├── netlib.h                     # umbrella（include client/request/response/options/tls/error/result）
+    └── curl_mapping.cc          # Request/Options/Tls → CURLOPT mapping
+src/public/include/http/       # public API headers (exported from src/http, http_ prefix)
+├── netlib.h                     # umbrella (includes client/request/response/options/tls/error/result)
 └── netlib_export.h
 src/tests/
 ├── BUILD.bazel
-├── smoke_test.cc                # 既有冒烟测试
-├── http_integration_test.cc     # 本地 HTTP 服务器集成测试（US1）
-├── https_test.cc                # HTTPS/证书验证（US2）
-└── config_test.cc               # 配置生效测试（US3）
+├── smoke_test.cc                # existing smoke test
+├── http_integration_test.cc     # local HTTP server integration tests (US1)
+├── https_test.cc                # HTTPS/certificate verification (US2)
+└── config_test.cc               # config effectiveness tests (US3)
 ```
 
 **Structure Decision**: 在 `src/http/` 落地全部实现（002 已建占位目录）。公共头经 `src/public/include/http/` 暴露（命名空间 `cpp_network::http`，文件名 `http_` 前缀），内部实现（engine/curl_mapping）隔离，不泄漏 libcurl 类型（FR-013）。

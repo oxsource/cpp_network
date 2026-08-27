@@ -73,14 +73,14 @@
 ### 请求生命周期（同步）
 
 ```text
-Send(Request) → 校验 → 加锁进共享 CURLM → curl_multi_poll 阻塞 → CURLMSG_DONE
+Send(Request) → validate → lock shared CURLM → curl_multi_poll blocks → CURLMSG_DONE
             → Result<Response>::Ok | Result<Error>
 ```
 
 ### Engine 生命周期
 
 ```text
-构建（创建 CURLM）→ 活跃（多请求复用连接池）→ Close（cleanup）→ 后续 Send 返回 kInvalidState
+Build (create CURLM) → Active (requests reuse the connection pool) → Close (cleanup) → subsequent Send returns kInvalidState
 ```
 
 ## 校验规则汇总

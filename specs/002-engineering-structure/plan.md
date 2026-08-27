@@ -52,46 +52,46 @@ specs/002-engineering-structure/
 
 ```text
 WORKSPACE                  # workspace(name = "cpp_network") + netlib_setup()
-BUILD.bazel                # 根 BUILD：alias //:netlib -> @cpp_network//src/public:netlib
+BUILD.bazel                # root BUILD: alias //:netlib -> @cpp_network//src/public:netlib
 .bazelversion              # 6.5.0
-.bazelrc                   # 基础配置 + 平台别名
-.gitignore                 # Bazel/C++/IDE/OS 忽略
-netlib_deps.bzl            # 依赖引导宏（幂等）
-Makefile                   # 便利构建入口
+.bazelrc                   # base config + platform aliases
+.gitignore                 # Bazel/C++/IDE/OS ignores
+netlib_deps.bzl            # dependency bootstrap macro (idempotent)
+Makefile                   # convenience build entry
 mk/
-├── rules.mk               # 模块注册宏（AOSP 风格）
+├── rules.mk               # module registration macros (AOSP style)
 ├── aliases.mk             # build/test/verify/clean
 ├── build.mk
 ├── tests.mk
 └── help.mk
 platforms/
-├── BUILD                  # 五平台定义
-└── platforms.bzl          # config_setting_and_platform / netlib_select 宏
+├── BUILD                  # five platform definitions
+└── platforms.bzl          # config_setting_and_platform / netlib_select macros
 tools/
-└── platform_setup.sh      # 主机平台检测 → 生成 .user.bazelrc
+└── platform_setup.sh      # host platform detection → generate .user.bazelrc
 third_party/
-├── libcurl/BUILD.bazel    # :libcurl_openssl（USE_OPENSSL，全平台）
-├── libcurl/libcurl.bzl    # 版本锁定
+├── libcurl/BUILD.bazel    # :libcurl_openssl (USE_OPENSSL, all platforms)
+├── libcurl/libcurl.bzl    # version pinning
 ├── openssl/BUILD.bazel    # @openssl//:ssl, :crypto
-├── openssl/openssl.bzl    # 版本锁定
+├── openssl/openssl.bzl    # version pinning
 ├── googletest/BUILD.bazel # re-export gtest
 └── bazel_skylib/BUILD.bazel
 src/
-├── http/BUILD.bazel        # 空/占位 cc_library（结构就位）
-├── websocket/BUILD.bazel   # 空/占位 cc_library
-├── tls/BUILD.bazel         # tls_config 占位 + netlib_select TLS 后端
+├── http/BUILD.bazel        # empty/placeholder cc_library (structure in place)
+├── websocket/BUILD.bazel   # empty/placeholder cc_library
+├── tls/BUILD.bazel         # tls_config placeholder + netlib_select TLS backend
 ├── public/
-│   ├── BUILD.bazel         # :netlib (静态) + :netlib_shared (linkshared)
+│   ├── BUILD.bazel         # :netlib (static) + :netlib_shared (linkshared)
 │   └── include/netlib/
-│       ├── netlib.h        # umbrella 头（占位）
-│       └── netlib_export.h # NETLIB_API 导出宏
+│       ├── netlib.h        # umbrella header (placeholder)
+│       └── netlib_export.h # NETLIB_API export macro
 ├── examples/
-│   └── BUILD.bazel         # 示例二进制（占位）
+│   └── BUILD.bazel         # example binary (placeholder)
 └── tests/
-    ├── BUILD.bazel         # 冒烟测试 cc_test
-    └── smoke_test.cc       # 结构验证冒烟测试
+    ├── BUILD.bazel         # smoke test cc_test
+    └── smoke_test.cc       # structure-validation smoke test
 examples/
-└── consumer_demo/          # 独立消费者工作区（local_repository）
+└── consumer_demo/          # standalone consumer workspace (local_repository)
     ├── WORKSPACE
     ├── BUILD.bazel
     └── main.cc

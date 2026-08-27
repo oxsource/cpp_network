@@ -8,19 +8,19 @@
 
 ```text
 <repo-root>/
-├── WORKSPACE                # workspace(name = "cpp_network"); 调用 netlib_setup()
+├── WORKSPACE                # workspace(name = "cpp_network"); calls netlib_setup()
 ├── BUILD.bazel              # alias(name="netlib", actual="@cpp_network//src/public:netlib")
 ├── .bazelversion            # 6.5.0
-├── .bazelrc                 # 基础配置 + 平台别名 + try-import .user.bazelrc
-├── .gitignore               # 必须忽略 bazel-*、.user.bazelrc、C++ 产物
-├── netlib_deps.bzl          # netlib_setup(): 幂等依赖引导
-├── Makefile                 # 便利入口（转调 Bazel）
-├── mk/                      # AOSP 风格模块化（rules/aliases/build/tests/help）
+├── .bazelrc                 # base config + platform aliases + try-import .user.bazelrc
+├── .gitignore               # must ignore bazel-*, .user.bazelrc, C++ artifacts
+├── netlib_deps.bzl          # netlib_setup(): idempotent dependency bootstrap
+├── Makefile                 # convenience entry (delegates to Bazel)
+├── mk/                      # AOSP-style modularization (rules/aliases/build/tests/help)
 ├── platforms/
-│   ├── BUILD                # 五平台（config_setting + platform 成对）
-│   └── platforms.bzl        # config_setting_and_platform / netlib_select 宏
+│   ├── BUILD                # five platforms (config_setting + platform pairs)
+│   └── platforms.bzl        # config_setting_and_platform / netlib_select macros
 ├── tools/
-│   └── platform_setup.sh    # 检测主机 → 生成 .user.bazelrc
+│   └── platform_setup.sh    # detect host → generate .user.bazelrc
 ├── third_party/
 │   ├── libcurl/{BUILD.bazel, libcurl.bzl}
 │   ├── openssl/{BUILD.bazel, openssl.bzl}
@@ -36,7 +36,7 @@
 │   ├── examples/BUILD.bazel
 │   └── tests/{BUILD.bazel, smoke_test.cc}
 └── examples/
-    └── consumer_demo/       # 独立工作区（local_repository）
+    └── consumer_demo/       # standalone workspace (local_repository)
         ├── WORKSPACE
         ├── BUILD.bazel
         └── main.cc
@@ -75,11 +75,11 @@
 ## 验收命令（实现阶段 gate）
 
 ```bash
-./tools/platform_setup.sh                 # 生成 .user.bazelrc
-bazel build //...                          # 零 error/warning
-bazel test //...                           # 冒烟测试通过
-bazel build //src/public:netlib_shared     # 共享库产物 + nm 检查符号
-make build && make test && make verify     # 便利入口可用
-# Android 平台解析（工具链环境具备时）：
+./tools/platform_setup.sh                 # generate .user.bazelrc
+bazel build //...                          # zero errors/warnings
+bazel test //...                           # smoke tests pass
+bazel build //src/public:netlib_shared     # shared library artifact + nm symbol check
+make build && make test && make verify     # convenience entries work
+# Android platform resolution (when toolchain environment available):
 bazel build --config=android_arm64 //src/tls:tls
 ```

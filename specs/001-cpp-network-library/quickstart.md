@@ -17,7 +17,7 @@
 ### Add the library to your Bazel project
 
 ```python
-deps = ["//:netlib"]  # 或 shared library 目标
+deps = ["//:netlib"]  # or the shared library target
 ```
 
 ### 平台设置（host）
@@ -36,7 +36,7 @@ netlib::HttpClient client = netlib::HttpClient::Config()
     .SetReadTimeout(std::chrono::seconds(10))
     .SetFollowRedirects(true)
     .Build()
-    .value();   // 失败会返回 Result 错误
+    .value();   // on failure an error is returned in the Result
 ```
 
 ### 2. 发送 GET 请求（阻塞，直接返回结果）
@@ -73,7 +73,7 @@ netlib::HttpRequest req = netlib::HttpRequest::Builder()
     .Method(netlib::HttpMethod::kGet)
     .Url("https://api.example.com/upload")
     .Header("X-Custom", "value")
-    .Timeout(std::chrono::seconds(3))   // 覆盖 client 级
+    .Timeout(std::chrono::seconds(3))   // overrides the client-level value
     .Build().value();
 ```
 

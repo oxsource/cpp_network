@@ -17,20 +17,20 @@
 ### 2. 初始化工程
 
 ```bash
-# 平台设置：检测本机 OS/架构，生成 git-ignored 的 .user.bazelrc
+# Platform setup: detect local OS/arch, generate git-ignored .user.bazelrc
 ./tools/platform_setup.sh
 ```
 
 ### 3. 构建与测试
 
 ```bash
-# 依赖自动拉取（netlib_setup 幂等）+ 全量构建
+# Automatic dependency fetching (netlib_setup idempotent) + full build
 bazel build //...
 
-# 冒烟测试
+# Smoke tests
 bazel test //...
 
-# 共享库目标
+# Shared library target
 bazel build //src/public:netlib_shared
 ```
 
@@ -39,15 +39,15 @@ bazel build //src/public:netlib_shared
 ```bash
 make build      # = bazel build //...
 make test       # = bazel test //...
-make verify     # 依赖解析 + 构建 + 测试全流程
+make verify     # full flow: dependency resolution + build + test
 make clean      # = bazel clean
-make menu       # 交互式帮助
+make menu       # interactive help
 ```
 
 ### 5. 外部消费者示例
 
 ```bash
-# examples/consumer_demo 是独立工作区，演示 local_repository 依赖
+# examples/consumer_demo is a standalone workspace demonstrating local_repository dependencies
 cd examples/consumer_demo && bazel build //... && bazel run //:demo
 ```
 

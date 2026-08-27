@@ -42,17 +42,19 @@
 ```cpp
 // src/http/sync_engine.h
 struct TransferOptions {
-  // 协议层注入的 easy 配置回调：由协议层设置 CURLOPT（HTTP: URL/headers/body;
-  // WS: CONNECT_ONLY + curl_ws_* 读写钩子）。
+  // easy configure callback injected by the protocol layer: sets CURLOPT options
+  // (HTTP: URL/headers/body; WS: CONNECT_ONLY + curl_ws_* read/write hooks).
   std::function<CURLcode(CURL* easy, void* userdata)> configure;
-  // 完成回调：协议层解析结果（HTTP: 提取 HttpResponse; WS: 记录连接建立）。
+  // Completion callback: the protocol layer parses the result
+  // (HTTP: extracts HttpResponse; WS: records connection established).
   std::function<void(CURL* easy, CURLcode rc, void* userdata)> on_done;
-  void* userdata;   // 协议层上下文
+  void* userdata;   // protocol-layer context
 };
 
 class SyncEngine {
  public:
-  // 同步执行一个传输，阻塞调用线程。协议层通过回调完成读写。
+  // Performs one transfer synchronously, blocking the calling thread.
+  // The protocol layer does I/O via callbacks.
   Result<void> Perform(TransferOptions opts);
 };
 ```

@@ -15,16 +15,16 @@
 ## 结构
 
 ```cpp
-class Engine {                     // src/http/engine.h，内部类型
+class Engine {                     // src/http/engine.h, internal type
  public:
   explicit Engine(const Options& options);   // curl_multi_init + ApplyMultiOptions
   ~Engine();                                 // → Close()
-  Result<Response> Send(const Request& req); // 加锁 → PerformSingle
-  void Close();                              // curl_multi_cleanup，closed_ = true
+  Result<Response> Send(const Request& req); // Acquires lock → PerformSingle
+  void Close();                              // curl_multi_cleanup, closed_ = true
  private:
   std::mutex mu_;
   CURLM* multi_;
-  Options options_;                          // 持有拷贝（blob PEM 生命周期的锚点）
+  Options options_;                          // Holds a copy (anchor for blob PEM lifetime)
   bool closed_;
 };
 ```
@@ -38,7 +38,7 @@ class Engine {                     // src/http/engine.h，内部类型
 ```text
 1. curl_easy_init
 2. 挂接 WriteCallback/HeaderCallback（body 与 headers 缓冲在栈上缓冲区）
-3. detail::ApplyEasyOptions(easy, req, options_, &header_list)   // 全部映射，见 http-config-mapping.md
+3. detail::ApplyEasyOptions(easy, req, options_, &header_list)   // All mappings, see http-config-mapping.md
 4. curl_multi_add_handle
 5. 循环：curl_multi_poll(1000ms) → curl_multi_perform，直到 running == 0 或 CURLM 错误
    - 记录 started_at（steady_clock），用于超时错误码细分

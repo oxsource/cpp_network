@@ -15,20 +15,21 @@
 ```cpp
 class Response {
  public:
-  int status() const;                       // 2xx 时 ok() 为 true
-  const std::string& status_text() const;   // v1 恒为 ""（不解析 reason phrase）
-  const Headers& headers() const;           // 保序，可重复
+  int status() const;                       // ok() is true for 2xx
+  const std::string& status_text() const;   // Always "" in v1 (reason phrase not parsed)
+  const Headers& headers() const;           // Order-preserving, duplicates allowed (see http-request.md)
   bool has_body() const;
   const std::string& body() const;
   bool ok() const;                          // status ∈ [200, 300)
-  const std::string& effective_url() const; // 重定向后的最终 URL
-  std::optional<std::string> GetHeader(name) const;   // 大小写不敏感首匹配
-  std::optional<Stream> stream();           // v1 恒返回 nullopt（streaming deferred）
+  const std::string& effective_url() const; // Final URL after redirects
+  std::optional<std::string> GetHeader(name) const;   // Delegates to Headers::Get (case-insensitive)
+                                            // For multiple values: headers().GetAll(name)
+  std::optional<Stream> stream();           // Always returns nullopt in v1 (streaming deferred)
 };
 
-class Stream {                              // 空壳：Impl 为空结构体
+class Stream {                              // Empty shell: Impl is an empty struct
   std::int64_t Read(void* out, std::size_t max_bytes, Error* error);
-  // v1 恒返回 -1 且 *error = kInvalidState("streaming not supported in buffered mode")
+  // In v1 always returns -1 and sets *error = kInvalidState("streaming not supported in buffered mode")
 };
 ```
 

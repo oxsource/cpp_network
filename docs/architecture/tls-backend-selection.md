@@ -26,13 +26,13 @@ TLS 由 libcurl 的 SSL 后端承担，**后端跟随各平台惯例、不做统
 
 ```text
 src/tls/
-├── BUILD.bazel          # cc_library "tls"：仅依赖公共头（Error/Result header-only）
-└── tls.cc               # Tls::Validate() 校验（CA 互斥/mTLS 成对/SNI/PEM 形态）
+├── BUILD.bazel          # cc_library "tls": public headers only (Error/Result header-only)
+└── tls.cc               # Tls::Validate() checks (CA exclusivity/mTLS pairing/SNI/PEM form)
 src/http/detail/
-├── curl_mapping.cc      # Tls → CURLOPT_SSL_* 映射（逐请求由引擎应用），
-                         # 含 blob → 缓存文件回退（CachedPemPath）
+├── curl_mapping.cc      # Tls → CURLOPT_SSL_* mapping (applied per-request by the engine),
+                         # incl. blob → cached-file fallback (CachedPemPath)
 src/public/include/http/
-└── tls.h                # 公共类型：cpp_network::http::Tls / VerifyMode
+└── tls.h                # Public types: cpp_network::http::Tls / VerifyMode
 ```
 
 - 无 `internal/ssl_backend.*`：映射直接内联在 HTTP 引擎的 curl_mapping 层（逐请求应用，且依赖 CachedPemPath 等传输期辅助）。
@@ -43,11 +43,11 @@ src/public/include/http/
 
 ```text
 src/tls/
-├── BUILD.bazel          # 链接 libcurl（OpenSSL 后端），无平台 select
-├── tls_config.h         # 公共 TlsConfig 类型
+├── BUILD.bazel          # Links libcurl (OpenSSL backend), no platform select
+├── tls_config.h         # Public TlsConfig type
 ├── tls_config.cc
 └── internal/
-    ├── ssl_backend.h    # 内部辅助：将 TlsConfig 应用到 CURLOPT（OpenSSL 后端）
+    ├── ssl_backend.h    # Internal helper: applies TlsConfig to CURLOPTs (OpenSSL backend)
     └── ssl_backend.cc
 ```
 
@@ -60,7 +60,7 @@ cc_library(
     hdrs = ["tls_config.h", "internal/ssl_backend.h"],
     deps = [
         "@openssl//:openssl",
-        "@libcurl//:libcurl_openssl",   # USE_OPENSSL，全平台
+        "@libcurl//:libcurl_openssl",   # USE_OPENSSL, all platforms
     ],
     visibility = ["//visibility:public"],
 )

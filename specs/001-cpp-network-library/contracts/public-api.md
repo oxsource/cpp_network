@@ -20,24 +20,24 @@ netlib
 namespace netlib {
 enum class ErrorCode {
   kNone = 0,
-  kInvalidArgument,            // URL 非法、配置非法、必填缺失
-  kInvalidState,               // 非法状态调用（如 client 已关闭）
-  kProtocolError,              // 一般协议错误
-  kMalformedResponse,          // 响应格式非法
-  kUnsupportedProtocol,        // 不支持的 scheme
-  kDnsResolutionFailed,        // DNS 解析失败
-  kConnectionRefused,          // 连接被拒绝
-  kConnectionClosed,           // 连接被对端关闭
-  kConnectionTimeout,          // 连接阶段超时
-  kReadTimeout,                // 读超时
-  kWriteTimeout,               // 写超时
-  kTotalTimeout,               // 总超时
-  kTlsHandshakeFailed,         // TLS 握手失败
-  kCertificateVerificationFailed,  // 证书校验失败
-  kTooManyRedirects,           // 重定向次数超限
-  kOutOfMemory,                // 内存不足
-  kCancelled,                  // 操作被取消
-  kInternalError,              // 引擎内部错误
+  kInvalidArgument,            // invalid URL, config, or missing required field
+  kInvalidState,               // called in an invalid state (e.g., client already closed)
+  kProtocolError,              // generic protocol error
+  kMalformedResponse,          // malformed response format
+  kUnsupportedProtocol,        // unsupported scheme
+  kDnsResolutionFailed,        // DNS resolution failed
+  kConnectionRefused,          // connection refused
+  kConnectionClosed,           // connection closed by peer
+  kConnectionTimeout,          // connect-phase timeout
+  kReadTimeout,                // read timeout
+  kWriteTimeout,               // write timeout
+  kTotalTimeout,               // total timeout
+  kTlsHandshakeFailed,         // TLS handshake failed
+  kCertificateVerificationFailed,  // certificate verification failed
+  kTooManyRedirects,           // redirect limit exceeded
+  kOutOfMemory,                // out of memory
+  kCancelled,                  // operation cancelled
+  kInternalError,              // internal engine error
 };
 
 class Error {
@@ -60,12 +60,12 @@ namespace netlib {
 template <typename T>
 class Result {
  public:
-  bool ok() const;              // 是否成功
-  const T& value() const;       // 成功值（ok() 为 true 时有效）
+  bool ok() const;              // whether the result is a success
+  const T& value() const;       // success value (valid when ok() is true)
   T& value();
-  const Error& error() const;   // 失败错误（ok() 为 false 时有效）
-  T TakeValue();                // 移动取出值
-  // 便捷：static 构造
+  const Error& error() const;   // failure error (valid when ok() is false)
+  T TakeValue();                // move out the value
+  // Convenience: static constructors
   static Result<T> Ok(T value);
   static Result<T> Err(Error error);
 };
@@ -101,10 +101,10 @@ class HttpRequest {
     Builder& Method(HttpMethod m);
     Builder& Url(const std::string& url);
     Builder& Header(const std::string& name, const std::string& value);
-    Builder& Body(const std::string& body);       // Content-Type: text/plain（若未设）
+    Builder& Body(const std::string& body);       // Content-Type: text/plain (if unset)
     Builder& JsonBody(const std::string& json);   // Content-Type: application/json
     Builder& Timeout(std::chrono::milliseconds ms);
-    Result<HttpRequest> Build() const;            // 校验失败返回 kInvalidArgument
+    Result<HttpRequest> Build() const;            // returns kInvalidArgument on validation failure
   };
 };
 ```
@@ -120,11 +120,11 @@ class HttpResponse {
   const std::string& status_text() const;
   const Headers& headers() const;
   bool has_body() const;
-  const std::string& body_string() const;     // 完整缓冲 body
-  // 大 body 流式（同步阻塞读取，SC-007）：仅在响应过大时可用
+  const std::string& body_string() const;     // fully buffered body
+  // Streaming for large bodies (synchronous blocking reads, SC-007): available only when the response is oversized
   std::optional<BodyStream> body_stream();
   bool ok() const;                            // 2xx
-  const std::string& effective_url() const;   // 重定向后最终 URL
+  const std::string& effective_url() const;   // final URL after redirects
 };
 ```
 
@@ -139,17 +139,17 @@ class HttpClient {
     Config& SetReadTimeout(std::chrono::milliseconds);
     Config& SetWriteTimeout(std::chrono::milliseconds);
     Config& SetTotalTimeout(std::chrono::milliseconds);
-    Config& SetRetryPolicy(const RetryPolicy& policy);   // 见下
+    Config& SetRetryPolicy(const RetryPolicy& policy);   // see below
     Config& SetProxy(const std::string& host, uint16_t port);
     Config& SetFollowRedirects(bool follow);
     Config& SetMaxRedirects(int n);
     Config& SetTlsConfig(const TlsConfig& config);
     Config& SetMaxConnectionsPerHost(int n);
     Config& SetKeepAlive(std::chrono::milliseconds);
-    Result<HttpClient> Build() const;   // 校验失败返回错误
+    Result<HttpClient> Build() const;   // returns an error on validation failure
   };
 
-  // —— 同步 axios 风格方法（全部阻塞调用线程，直接返回 Result<HttpResponse>）——
+  // —— Synchronous axios-style methods (all block the calling thread and return Result<HttpResponse> directly) ——
   Result<HttpResponse> Get(const std::string& url);
   Result<HttpResponse> Get(const HttpRequest& req);
   Result<HttpResponse> Post(const std::string& url, const std::string& body);
@@ -158,11 +158,11 @@ class HttpClient {
   Result<HttpResponse> Patch(const std::string& url, const std::string& body);
   Result<HttpResponse> Head(const std::string& url);
   Result<HttpResponse> Options(const std::string& url);
-  Result<HttpResponse> Send(const HttpRequest& req);   // 通用入口
+  Result<HttpResponse> Send(const HttpRequest& req);   // general entry point
 
-  void Close();   // 关闭连接池（线程安全，可在其他线程调用）
+  void Close();   // close the connection pool (thread-safe; may be called from another thread)
 
-  // 并发语义：可在任意多个线程同时调用 Send（内部经共享 CURLM 串行化，连接池复用）
+  // Concurrency semantics: Send may be called concurrently from any number of threads (serialized internally via a shared CURLM; connection pool is reused)
 };
 ```
 
@@ -175,7 +175,7 @@ enum class VerifyMode { kVerifyPeer, kSkipVerification };
 
 class TlsConfig {
  public:
-  VerifyMode verify_mode() const;                    // 默认 kVerifyPeer
+  VerifyMode verify_mode() const;                    // defaults to kVerifyPeer
   const std::vector<std::string>& ca_certificates() const;
   const std::optional<std::string>& client_certificate() const;
   const std::optional<std::string>& client_private_key() const;
@@ -196,8 +196,8 @@ class TlsConfig {
 
 ```cpp
 struct RetryPolicy {
-  // 注意：库内单次传输；重试由上层循环调用 Send 实现。
-  // 该类型保留用于文档与校验（v1 库不自动重试）。
+  // Note: single transfer inside the library; retries are implemented by upper layers looping over Send.
+  // This type is kept for documentation and validation purposes (the v1 library does not auto-retry).
   int max_retries = 0;
   std::chrono::milliseconds retry_delay{100};
   enum class Condition { kNone, kNetworkError, kNetworkErrorOr5xx };
