@@ -26,6 +26,7 @@ using cpp_network::http::Error;
 using cpp_network::http::HttpBase;
 using cpp_network::http::MtlsBase;
 using cpp_network::http::Options;
+using cpp_network::http::Request;
 using cpp_network::http::Result;
 using cpp_network::http::Response;
 using cpp_network::http::Tls;
@@ -48,7 +49,7 @@ Options ShortTimeouts() {
   Options options;
   options.SetConnectTimeout(std::chrono::milliseconds(5000));
   options.SetReadTimeout(std::chrono::milliseconds(5000));
-  options.SetTotalTimeout(std::chrono::milliseconds(10000));
+  options.SetTotalTimeout(std::chrono::milliseconds(15000));
   return options;
 }
 
@@ -58,6 +59,104 @@ struct Scenario {
   bool (*run)(std::string* detail);
 };
 
+// Default (external) mode: real-world HTTPS against public endpoints — the
+// user-approved validation scope for Android devices whose network differs
+// from the development host (no shared segment, no adb reverse needed).
+std::string ExtSiteBase() {
+  const char* v = std::getenv("NETLIB_TEST_EXT_BASE");
+  return (v != nullptr && *v != '\0') ? std::string(v)
+                                      : std::string("https://example.com");
+}
+
+bool E1_SiteGet(std::string* detail) {
+  auto client = Client::Create(ShortTimeouts());
+  if (!client.ok()) {
+    *detail = client.error().message();
+    return false;
+  }
+  Result<Response> res = client->Get(ExtSiteBase() + "/");
+  if (!res.ok()) {
+    *detail = "[" +
+              std::string(cpp_network::http::ErrorCodeToString(
+                  res.error().code())) +
+              "] " + res.error().message();
+    return false;
+  }
+  if (res->status() != 200 || res->body().find("Example Domain") ==
+                                  std::string::npos) {
+    *detail = "status " + std::to_string(res->status());
+    return false;
+  }
+  return true;
+}
+
+bool E2_SiteHeaderRead(std::string* detail) {
+  auto client = Client::Create(ShortTimeouts());
+  if (!client.ok()) {
+    *detail = client.error().message();
+    return false;
+  }
+  Result<Response> res = client->Head(ExtSiteBase() + "/");
+  if (!res.ok() || res->status() != 200) {
+    *detail = res.ok() ? "status " + std::to_string(res->status())
+                       : "[" +
+                             std::string(cpp_network::http::ErrorCodeToString(
+                                 res.error().code())) +
+                             "] " + res.error().message();
+    return false;
+  }
+  auto ct = res->GetHeader("content-TYPE");  // case-insensitive lookup
+  if (!ct.has_value() || ct->find("text/html") == std::string::npos) {
+    *detail = "missing text/html Content-Type";
+    return false;
+  }
+  return true;
+}
+
+bool E3_PostJsonEcho(std::string* detail) {
+  auto client = Client::Create(ShortTimeouts());
+  if (!client.ok()) {
+    *detail = client.error().message();
+    return false;
+  }
+  Result<Request> req =
+      Request::Builder()
+          .SetMethod(cpp_network::http::Method::kPost)
+          .Url("https://httpbin.org/post")
+          .JsonBody("{\"hello\":\"android\"}")
+          .Timeout(std::chrono::milliseconds(15000))
+          .Build();
+  if (!req.ok()) {
+    *detail = req.error().message();
+    return false;
+  }
+  Result<Response> res = client->Send(req.value());
+  if (!res.ok()) {
+    *detail = "[" +
+              std::string(cpp_network::http::ErrorCodeToString(
+                  res.error().code())) +
+              "] " + res.error().message();
+    return false;
+  }
+  if (res->status() != 200 ||
+      res->body().find("hello") == std::string::npos ||
+      res->body().find("android") == std::string::npos) {
+    *detail = "status " + std::to_string(res->status()) + " no echo";
+    return false;
+  }
+  return true;
+}
+
+const Scenario kExternalScenarios[] = {
+    {1, "HTTPS GET example.com (200 + body)", E1_SiteGet},
+    {2, "HEAD + case-insensitive header read", E2_SiteHeaderRead},
+    {3, "HTTPS POST JSON echo (httpbin)", E3_PostJsonEcho},
+};
+
+// Local-fixture mode (NETLIB_TEST_MODE=local): the seven certificate-oriented
+// scenarios S1-S7 require reachable self-signed/mTLS services. They remain
+// valuable on hosts where src/tests fixtures run natively; Android gateways
+// without a shared network segment cannot reach them (see research.md).
 bool S1_DefaultRejectsSelfSigned(std::string* detail) {
   auto client = Client::Create(ShortTimeouts());
   if (!client.ok()) {
@@ -206,7 +305,7 @@ bool S7_HttpBaseline404Header(std::string* detail) {
   return true;
 }
 
-const Scenario kScenarios[] = {
+const Scenario kLocalScenarios[] = {
     {1, "self-signed rejected by default", S1_DefaultRejectsSelfSigned},
     {2, "CA file injection accepted", S2_CaFileInjected},
     {3, "in-memory CA PEM accepted", S3_CaPemInjected},
@@ -219,13 +318,21 @@ const Scenario kScenarios[] = {
 }  // namespace
 
 int main() {
-  const int total = sizeof(kScenarios) / sizeof(kScenarios[0]);
+  const bool local_mode =
+      std::getenv("NETLIB_TEST_MODE") != nullptr &&
+      std::string(std::getenv("NETLIB_TEST_MODE")) == "local";
+  const Scenario* scenarios = local_mode ? kLocalScenarios : kExternalScenarios;
+  const char* tag = local_mode ? "S" : "E";
+  const int total = (local_mode ? sizeof(kLocalScenarios)
+                                : sizeof(kExternalScenarios)) /
+                    sizeof(Scenario);
   int passed = 0;
   int first_failure = 0;
-  for (const Scenario& scenario : kScenarios) {
+  for (int i = 0; i < total; ++i) {
+    const Scenario& scenario = scenarios[i];
     std::string detail;
     const bool ok = scenario.run(&detail);
-    std::printf("[S%d] %s : %s%s%s\n", scenario.id,
+    std::printf("[%s%d] %s : %s%s%s\n", tag, scenario.id,
                 ok ? "PASS" : "FAIL", scenario.name,
                 ok ? "" : " -- ", ok ? "" : detail.c_str());
     std::fflush(stdout);

@@ -8,6 +8,11 @@ help:
 	@echo "  make test      - bazel test //..."
 	@echo "  make verify    - build + test"
 	@echo "  make clean     - bazel clean"
+	@echo "Android cross-build & deploy (specs/004):"
+	@echo "  make build-android - arm64-v8a cpp_network + device binaries"
+	@echo "  make push [DEVICE=serial] - artifacts -> /data/local/tmp/cpp_network"
+	@echo "  make run  [DEVICE=serial] - fixtures + adb reverse + remote e2e"
+	@echo "  make clean-device [DEVICE=serial]"
 	@echo "  make menu      - interactive menu"
 	@echo "  make modules   - list registered modules"
 

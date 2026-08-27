@@ -4,6 +4,7 @@
 
 include mk/rules.mk
 include mk/aliases.mk
+include mk/android.mk
 include mk/help.mk
 
 # Default target: show help when invoked without arguments.

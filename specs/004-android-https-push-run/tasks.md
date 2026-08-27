@@ -72,9 +72,9 @@
 
 ### Implementation for User Story 2
 
-- [ ] T010 [US2] Create mk/android.mk defining `build-android` target that delegates to `bazel build --config=android_arm64 //src/public:cpp_network //src/tests:device_e2e //src/examples/http_demo:http_demo`, surfacing bazel failures verbatim; register description text through mk/rules.mk conventions (contracts/make-targets.md Targets 表)
-- [ ] T011 [US2] Add `ANDROID_NDK_HOME` prerequisite guard inside build-android: fail fast with hint to run tools/platform_setup.sh when unset or missing (US2 acceptance scenario 1 preflight)
-- [ ] T012 [US2] Validate fresh-environment reproducibility of build-android (clear third-party build caches, rerun, record wall time) and compare with incremental run for docs evidence (SC-002; research.md D7 matrix evidence ②)
+- [x] T010 [US2] Create mk/android.mk defining `build-android` target that delegates to `bazel build --config=android_arm64 //src/public:cpp_network //src/tests:device_e2e //src/examples/http_demo:http_demo`, surfacing bazel failures verbatim; register description text through mk/rules.mk conventions (contracts/make-targets.md Targets 表)
+- [x] T011 [US2] Add `ANDROID_NDK_HOME` prerequisite guard inside build-android: fail fast with hint to run tools/platform_setup.sh when unset or missing (US2 acceptance scenario 1 preflight)
+- [x] T012 [US2] Validate fresh-environment reproducibility of build-android (clear third-party build caches, rerun, record wall time) and compare with incremental run for docs evidence (SC-002; research.md D7 matrix evidence ②)
 
 **Checkpoint**: 新环境到产物的命令序列可复制、无隐藏手工步骤；host 默认 config 未受影响
 
@@ -88,12 +88,12 @@
 
 ### Implementation for User Story 3
 
-- [ ] T013 [US3] Implement `push` target in mk/android.mk: resolve latest built artifacts, `adb [-s $DEVICE] push` binaries and src/tests/certs/ into `$DEVICE_DIR` (/data/local/tmp/cpp_network/), printing per-file remote-path bytes summary lines (contracts/make-targets.md Output 契约); stale-artifact guard requires re-run of build-android (data-model.md BuildArtifact 校验规则)
-- [ ] T014 [US3] Implement device-selection logic shared by push/run/clean-device: DEVICE overrides ANDROID_SERIAL overrides auto-pick; enumerate via `adb devices`; 0 devices → connection hint; unauthorized/offline entries reported distinctly; ≥2 candidates → list and abort (contracts/make-targets.md Device 选择规则 1–4, US3 场景 3–4)
-- [ ] T015 [US3] Implement `run` target in mk/android.mk: launch host test servers (:18080/:18443:44 wait-ready loop), establish `adb reverse tcp:N tcp:N` for each PORTS entry, execute device_e2e remotely, stream stdout/stderr live, parse trailing `EXIT:<code>` line → propagate as make exit status and print `[device-exit: <code>]` summary (contracts/make-targets.md Exit Codes)
-- [ ] T016 [US3] Implement `clean-device` target removing $DEVICE_DIR contents idempotently (missing dir counts as success) (contracts/make-targets.md Targets 表)
-- [ ] T017 [US3] Wire mk/android.mk into Makefile includes; verify `make help` lists build-android/push/run/clean-device with descriptions (mk/help.mk mechanism, contracts/make-targets.md 输出契约末条)
-- [ ] T018 [US3] End-to-end closed-loop validation of push+run incl. failure paths: no-device error timing ≤5s, duplicate-port conflict reporting with offending port name, data-cable-unplug mid-push leaves no bad references (rerun recovers) — record results against spec Edge Cases list and SC-005
+- [x] T013 [US3] Implement `push` target in mk/android.mk: resolve latest built artifacts, `adb [-s $DEVICE] push` binaries and src/tests/certs/ into `$DEVICE_DIR` (/data/local/tmp/cpp_network/), printing per-file remote-path bytes summary lines (contracts/make-targets.md Output 契约); stale-artifact guard requires re-run of build-android (data-model.md BuildArtifact 校验规则)
+- [x] T014 [US3] Implement device-selection logic shared by push/run/clean-device: DEVICE overrides ANDROID_SERIAL overrides auto-pick; enumerate via `adb devices`; 0 devices → connection hint; unauthorized/offline entries reported distinctly; ≥2 candidates → list and abort (contracts/make-targets.md Device 选择规则 1–4, US3 场景 3–4)
+- [x] T015 [US3] Implement `run` target in mk/android.mk: launch host test servers (:18080/:18443:44 wait-ready loop), establish `adb reverse tcp:N tcp:N` for each PORTS entry, execute device_e2e remotely, stream stdout/stderr live, parse trailing `EXIT:<code>` line → propagate as make exit status and print `[device-exit: <code>]` summary (contracts/make-targets.md Exit Codes)
+- [x] T016 [US3] Implement `clean-device` target removing $DEVICE_DIR contents idempotently (missing dir counts as success) (contracts/make-targets.md Targets 表)
+- [x] T017 [US3] Wire mk/android.mk into Makefile includes; verify `make help` lists build-android/push/run/clean-device with descriptions (mk/help.mk mechanism, contracts/make-targets.md 输出契约末条)
+- [x] T018 [US3] End-to-end closed-loop validation of push+run incl. failure paths: no-device error timing ≤5s, duplicate-port conflict reporting with offending port name, data-cable-unplug mid-push leaves no bad references (rerun recovers) — record results against spec Edge Cases list and SC-005
 
 **Checkpoint**: 「改代码 → 构建 → push → run → 出结果」≤2 分钟达成（SC-003）；多设备/无设备/端口冲突交互符合契约
 

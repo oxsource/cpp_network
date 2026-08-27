@@ -101,3 +101,24 @@ build:android_arm64 --incompatible_enable_cc_toolchain_resolution=true
 **Decision**: FR-010 通过三处证据落地：① `tools/platform_setup.sh` 输出 NDK 状态；② `specs/004-.../quickstart.md` 提供完整命令序列；③ 相关架构文档平台差异表将 Android 行更新为实测结论（附验收命令）。不改动 host 构建分支的行为与依赖图。
 
 **Rationale**: 保持矩阵更新有据可查而非口头声明；host 侧零回归由 select() 结构性保证。
+
+## D7 取证补充（2026-08-27，T010-T012 实测）
+
+| 场景 | 耗时 |
+|------|------|
+| 增量（全缓存命中） | ~0.3s |
+| `bazel clean` 后全量重建（repository/disk cache 外置生效） | **40.6s**（含 OpenSSL+curl 重新 configure/make） |
+| 首次冷启动（无外置缓存，含源码下载+全量交叉编译） | Phase 2 期间实测分钟级 |
+
+证据对应：SC-002（命令化产出物齐备）、SC-003 前半段（构建环节增量秒级）。异常路径守卫实测三分支：未设置→Error1+hint、过旧(25.2)→Error2、合规(28.2)→通过。
+
+## D8 范围修订（2026-08-27，Phase 5 实施）：设备端验证改为外网 HTTPS
+
+用户确认设备与宿主**不在同一网段**后拍板：若验证复杂，仅需测试外网 HTTPS 请求。据此：
+
+1. `run` 移除"启动宿主 fixtures + adb reverse + 端口转发"链路（android_device.sh 简化，PORTS 变量废弃）。
+2. `device_e2e` 改为**双模式**：默认 external（E1–E3：example.com GET/HEAD+大小写头读取/httpbin POST echo）；`NETLIB_TEST_MODE=local` 保留 S1–S7 编排（将来内网可达或推 server 上设备时启用）。
+3. 自签/mTLS 行为一致性已由宿主侧证据覆盖：宿主 device_e2e S1–S7 曾实测 PASS 7/7；同套 gtest 持续回归。
+4. 实施期修正一处编排 bug：`hostserial` 经命令替换调用时 `die` 的退出码被吞——新增 `select_device_or_exit` 显式 `|| exit $?` 传播。
+
+验证矩阵（fake-adb 单设备仿真，宿主二进制代理执行）：全绿 PASS 3/3 exit0；故障注入(E1定向不可达)退出码2；多设备列出候选终止(exit1)；无设备 11ms 快速失败。

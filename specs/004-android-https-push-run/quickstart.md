@@ -39,16 +39,19 @@ make push DEVICE=<serial>     # 可省略 DEVICE=…（仅一台设备时自动�
 make run  DEVICE=<serial>
 ```
 
-`run` 将依次：启动宿主测试服务（HTTP :18080 / TLS :18443）→ 建立 `adb reverse` 端口反向转发 → 在设备上执行 e2e → 实时回传输出 → 以设备端退出码结束。
+`run` 在设备上执行 e2e：默认**外网 HTTPS 场景**（example.com / httpbin.org，设备使用自身网络直连，无需与宿主同网段），实时回传输出并以设备端退出码结束。
 
 成功样例结尾：
 
 ```text
-PASS 7/7
+[E1] PASS : HTTPS GET example.com (200 + body)
+[E2] PASS : HEAD + case-insensitive header read
+[E3] PASS : HTTPS POST JSON echo (httpbin)
+PASS 3/3
 [device-exit: 0]
 ```
 
-失败时退出码 = 失败场景序号 + 1（场景清单见 contracts/device-test-contract.md）。
+失败时退出码 = 失败场景序号 + 1（场景清单见 contracts/device-test-contract.md；本地自签/mTLS 场景设置 `NETLIB_TEST_MODE=local` 并要求可达 fixtures）。
 
 ## 应用开发者视角（零平台分支）
 
@@ -71,7 +74,8 @@ auto client = cpp_network::http::Client::Create(opts);   // 无任何 #ifdef
 |------|------|
 | `make push` 报未连接/未授权 | `adb devices` 核对状态；手机端允许 USB 调试 |
 | 多台设备报候选列表 | 加 `DEVICE=<serial>` 重试 |
-| run 报端口占用 | `PORTS="28080 28443"` 换端口，或释放占用进程 |
+| run 报端口占用 | 不适用（外网模式无端口转发）；检查设备网络连通性 |
+| run 报证书/连接错误 | `NETLIB_TEST_EXT_BASE=https://<可达地址>` 定向排查 |
 | 构建期找不到 NDK | 确认 `ANDROID_NDK_HOME` 指向 r26+ 后重试 |
 
 ## 清理
