@@ -26,6 +26,21 @@ SENTINEL="__NETLIB_EXIT__"
 
 die() { echo "ERROR: $*" >&2; exit "${2:-1}"; }
 
+# T019 hardening (specs/004 US4): every device-side write must stay inside
+# /data/local/tmp/** — the only directory tree an adb shell user can write
+# without root. Guards against empty or traversing overrides of DEVICE_DIR
+# before any destructive op (rm -rf) or upload fires.
+validate_device_dir() {
+  case "$DEVICE_DIR" in
+    /data/local/tmp/*|/data/local/tmp)
+      case "$DEVICE_DIR" in
+        *..*) die "unsafe DEVICE_DIR='$DEVICE_DIR' (must not contain ..)" 64 ;;
+        *) return 0 ;;
+      esac ;;
+    *) die "unsafe DEVICE_DIR='$DEVICE_DIR' (must live under /data/local/tmp/)" 64 ;;
+  esac
+}
+
 # ---- device selection -----------------------------------------------------
 list_devices() {
   "$ADB" devices 2>/dev/null | tail -n +2 | awk 'NF>=2 {print $1, $2}'
@@ -84,6 +99,7 @@ stage_binaries() {
 }
 
 do_push() {
+  validate_device_dir
   select_device_or_exit >/dev/null
   local bin remote_files=("$DEVICE_DIR/device_e2e") total=0
   PUSHLOG="/tmp/cpp_network_push_summary.log"
@@ -95,7 +111,7 @@ do_push() {
 
   # cert assets (all *.pem under src/tests/certs)
   local certs=("$REPO_ROOT"/src/tests/certs/*.pem)
-  "$ADB" $(sflag) shell "mkdir -p '$DEVICE_DIR/certs'" || die "mkdir on device failed" 4
+  "$ADB" $(sflag) shell "mkdir -p '$DEVICE_DIR/certs' '$DEVICE_DIR/tmp'" || die "mkdir on device failed" 4
   for f in "${certs[@]}"; do
     local name size
     name="$(basename "$f")"
@@ -138,10 +154,13 @@ ensure_pushed() {
 # fixtures, no adb reverse, no PORTS. Local-fixture scenarios remain
 # available via NETLIB_TEST_MODE=local on hosts running src/tests fixtures.
 do_run() {
+  validate_device_dir
   select_device_or_exit
   ensure_pushed
 
-  local envline="NETLIB_TEST_DATA_DIR=$DEVICE_DIR/certs"
+  # TMPDIR: local-future inline-PEM fallback (CachedPemPath) must land inside
+  # the confined work dir, never /tmp (not writable for shell users).
+  local envline="TMPDIR=$DEVICE_DIR/tmp NETLIB_TEST_DATA_DIR=$DEVICE_DIR/certs"
   local cmd="cd '$DEVICE_DIR' && $envline ./device_e2e 2>&1; echo $SENTINEL:\$?"
 
   "$ADB" $(sflag) shell "$cmd" 2>&1 | tee /tmp/cpp_network_device_stream.log \
@@ -155,6 +174,7 @@ do_run() {
 
 # ---- clean ----------------------------------------------------------------
 do_clean() {
+  validate_device_dir
   select_device_or_exit >/dev/null
   "$ADB" $(sflag) shell "rm -rf '$DEVICE_DIR' && mkdir -p '$DEVICE_DIR'"
   echo "[android] cleaned $DEVICE_DIR"

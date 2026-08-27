@@ -81,7 +81,9 @@ class Tls {
 |------|--------------|------|
 | macOS | 系统信任库（libcurl 默认） | 无需额外配置；blob 选项需回退（见上） |
 | Linux | 系统信任库（`/etc/ssl/certs` 等） | 无需额外配置 |
-| Android | 需显式 CA（后续版本明确默认行为与注入方案） | v1 host 构建验证 |
+| Android | 需显式 CA（系统信任库对 libcurl 不可直接消费：目录带元数据头且无 c_hash 命名） | **已落地（specs/004，2026-08-27）**：源码交叉编译 OpenSSL 3.0.13 + curl 8.7.1 静态链接；信任锚=使用者经 `Tls::Builder` 注入（文件/内存双形态），行为与桌面平台一致 |
+
+> Android 落地细节与验证证据见 `specs/004-android-https-push-run/`（research.md D1–D4、device-test-contract.md）。
 
 ## 默认值策略
 

@@ -122,3 +122,18 @@ build:android_arm64 --incompatible_enable_cc_toolchain_resolution=true
 4. 实施期修正一处编排 bug：`hostserial` 经命令替换调用时 `die` 的退出码被吞——新增 `select_device_or_exit` 显式 `|| exit $?` 传播。
 
 验证矩阵（fake-adb 单设备仿真，宿主二进制代理执行）：全绿 PASS 3/3 exit0；故障注入(E1定向不可达)退出码2；多设备列出候选终止(exit1)；无设备 11ms 快速失败。
+
+## D9 可移植性加固（2026-08-27，T019 实测）
+
+**审计结论（android_device.sh 全量设备侧写入路径）**：
+| 写入点 | 位置 | 收敛 |
+|--------|------|------|
+| push: `mkdir -p $DEVICE_DIR/{certs,tmp}` | genrule 外 adb shell | DEVICE_DIR 前缀校验后 ✓ |
+| push: 二进制与 certs 上传 | 同上 | ✓ |
+| run: 远端 envline 注入 `TMPDIR=$DEVICE_DIR/tmp` | 防未来 inline-PEM 兜底落盘写到不可写的 /tmp | ✓ |
+| clean: `rm -rf '$DEVICE_DIR'` | 危险操作前置 prefix 校验 | ✓ |
+| device_e2e external 模式（E1–E3） | 运行期零磁盘写入（无 inline PEM ⇒ 不触发 CachedPemPath；仅读 certs 于 local 模式） | ✓ |
+
+**新增防护 `validate_device_dir`**：DEVICE_DIR 必须位于 `/data/local/tmp/**` 且不含 `..`，否则 exit 64 拒绝执行任何动作。实测：`/system`→64、含 `..` 穿越→64、空串回落默认目录、合规外网全链路回归 PASS 3/3。
+
+**运行时零 root 断言**：全部写入收敛于 `/data/local/tmp/**`（adb shell 用户可写）；无系统分区访问点。

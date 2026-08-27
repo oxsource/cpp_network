@@ -82,5 +82,5 @@ auto client = cpp_network::http::Client::Create(opts);   // 无任何 #ifdef
 
 ```bash
 make clean-device [DEVICE=<serial>]   # 移除设备端 /data/local/tmp/cpp_network/
-bazel clean                           # 本机构建缓存（含第三方源码编译产物）
+bazel clean                           # 本机构建缓存（源码归档与 configure/make 产物经外置 repository/disk cache 自动恢复）
 ```

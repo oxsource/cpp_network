@@ -44,3 +44,11 @@ TLS 由 libcurl 的 SSL 后端承担，**后端跟随平台惯例，不做统一
 - `third_party/openssl` 与 `third_party/libcurl` 维持占位，仅在 Android 集成启动时激活。
 - `android-boringssl-build.md` 保持废弃；原 `netlib_select` 平台助手（无 TLS 分支）已随命名统一移除。
 - 若未来出现需要锁定特定 OpenSSL 版本的需求（如依赖其特有行为），再重新评估源码构建路径。
+
+## Android 落地补充（specs/004，2026-08-27）
+
+"能否使用 Android 平台自己的 TLS 体系"的可行性边界（详见 specs/004-android-https-push-run/research.md D1）：
+
+1. 系统/Java 层 TLS 为 Conscrypt（Java Provider，底层 BoringSSL），仅面向 JVM 调用方；libcurl 无 Conscrypt 后端，C++ 进程不可调用。
+2. NDK 自 r18 起移除 libssl/libcrypto；应用进程受 linker namespace 限制只能链接 `/system/etc/public.libraries.txt` 白名单内系统库——TLS 库不在其中。
+3. 结论：任何 C++ 方案必须源码自建一个 TLS 后端。曾评估 BoringSSL（Android 同源栈、无需 LTS commit 锁定复杂度低），但因快速演进无 LTS 与已知校验语义差异面，最终维持 **OpenSSL 3.0.13 LTS** 源码交叉编译（与 Linux 主机同语义栈）。工具链接入经 rules_android_ndk v0.1.2（懒取仓，宿主构建不触碰 NDK）。

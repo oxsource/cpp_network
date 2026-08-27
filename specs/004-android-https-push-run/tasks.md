@@ -107,8 +107,8 @@
 
 ### Implementation for User Story 4
 
-- [ ] T019 [US4] Audit artifact placement: assert all writes confined to $DEVICE_DIR (/data/local/tmp/, shell-writable, no system partition access) across push/run/clean-device scripts in mk/android.mk (US4 场景 1 precondition)
-- [ ] T020 [US4] Run the full push+run closure twice on two different-vendor devices and diff PASS summaries; capture any device-specific divergence into follow-up notes (spec US4 场景 2, SC-001 cross-device repeat)
+- [x] T019 [US4] Audit artifact placement: assert all writes confined to $DEVICE_DIR (/data/local/tmp/, shell-writable, no system partition access) across push/run/clean-device scripts in mk/android.mk (US4 场景 1 precondition)
+- [ ] T020 (BLOCKED: requires two physical devices from different vendors) [US4] Run the full push+run closure twice on two different-vendor devices and diff PASS summaries; capture any device-specific divergence into follow-up notes (spec US4 场景 2, SC-001 cross-device repeat)
 
 **Checkpoint**: 可移植性证据成立；US4 独立可测且不影响前序故事
 
@@ -118,10 +118,10 @@
 
 **Purpose**: 文档矩阵更新与全量回归收口（对应 FR-010/FR-011）
 
-- [ ] T021 [P] Update docs/architecture/tls-config.md 平台差异表 Android row to实测结论（信任锚=显式注入,CA 目录不可直读的约束说明）and tls-backend-selection.md 验证矩阵（Android arm64 已实测通过）linking this feature dir (research.md D7, FR-011)
-- [ ] T022 [P] Record decision trail addendum in docs/architecture/adr/adr-003-tls-buildtime-select.md or linked note: Android 分支落地选用 OpenSSL 3.0.13 及 Conscrypt/NDK 白名单不可用论证（research.md D1 补充论证）
-- [ ] T023 Run full host regression suite `bazel test //...` on macOS arm64 confirming zero behavior change beyond新增目标 (FR-010), and `make verify` passes end-to-end
-- [ ] T024 Walk through specs/004-android-https-push-run/quickstart.md verbatim in a clean terminal session fixing any drift found (quickstart must remain copy-paste runnable, SC-002 closing evidence)
+- [x] T021 [P] Update docs/architecture/tls-config.md 平台差异表 Android row to实测结论（信任锚=显式注入,CA 目录不可直读的约束说明）and tls-backend-selection.md 验证矩阵（Android arm64 已实测通过）linking this feature dir (research.md D7, FR-011)
+- [x] T022 [P] Record decision trail addendum in docs/architecture/adr/adr-003-tls-buildtime-select.md or linked note: Android 分支落地选用 OpenSSL 3.0.13 及 Conscrypt/NDK 白名单不可用论证（research.md D1 补充论证）
+- [x] T023 Run full host regression suite `bazel test //...` on macOS arm64 confirming zero behavior change beyond新增目标 (FR-010), and `make verify` passes end-to-end
+- [x] T024 Walk through specs/004-android-https-push-run/quickstart.md verbatim in a clean terminal session fixing any drift found (quickstart must remain copy-paste runnable, SC-002 closing evidence)
 
 ---
 
