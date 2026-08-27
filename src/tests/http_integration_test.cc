@@ -107,6 +107,29 @@ TEST_F(HttpIntegrationTest, PostEcho) {
   EXPECT_EQ("payload123", res->body());
 }
 
+TEST_F(HttpIntegrationTest, DuplicateHeadersPreservedAndCaseInsensitive) {
+  Result<Response> res = client_->Get(kBase + "/duplicates");
+  ASSERT_TRUE(res.ok()) << res.error().message();
+  const Headers& headers = res->headers();
+  // Duplicate field lines are preserved in order (Set-Cookie style).
+  EXPECT_EQ(2, headers.GetAll("set-cookie").size());
+  std::vector<std::string> cookies = headers.GetAll("SET-COOKIE");
+  ASSERT_EQ(2u, cookies.size());
+  EXPECT_EQ("a=1; Path=/", cookies[0]);
+  EXPECT_EQ("b=2; Path=/", cookies[1]);
+  // Lookup is case-insensitive; first match wins.
+  auto first = headers.Get("x-CASE-test");
+  ASSERT_TRUE(first.has_value());
+  EXPECT_EQ("vAlUe", *first);
+  EXPECT_TRUE(headers.Has("X-CASE-TEST"));
+  // Indexed access covers every field line.
+  int content_type_lines = 0;
+  for (int i = 0; i < headers.size(); ++i) {
+    if (headers.name(i) == "Content-Type") ++content_type_lines;
+  }
+  EXPECT_EQ(1, content_type_lines);
+}
+
 TEST_F(HttpIntegrationTest, InvalidUrlRejected) {
   Result<Request> build =
       Request::Builder().Url("not-a-url").Build();

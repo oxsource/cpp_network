@@ -54,6 +54,16 @@ cc_test(
 )
 
 cc_test(
+    name = "headers_test",
+    srcs = ["headers_test.cc"],
+    deps = [
+        "@cpp_network//src/public:netlib",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "config_test",
     srcs = ["config_test.cc"],
     data = ["test_server.py"],

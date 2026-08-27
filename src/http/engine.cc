@@ -26,7 +26,7 @@ size_t WriteCallback(char* ptr, size_t size, size_t nmemb, void* userdata) {
 }
 
 size_t HeaderCallback(char* buffer, size_t size, size_t nitems, void* userdata) {
-  auto* headers = static_cast<Headers*>(userdata);
+  auto* builder = static_cast<Headers::Builder*>(userdata);
   std::string line(buffer, size * nitems);
   const std::size_t colon = line.find(':');
   if (colon != std::string::npos) {
@@ -40,7 +40,7 @@ size_t HeaderCallback(char* buffer, size_t size, size_t nitems, void* userdata) 
     while (!value.empty() && (value.back() == '\r' || value.back() == '\n')) {
       value.pop_back();
     }
-    headers->emplace_back(std::move(name), std::move(value));
+    builder->Add(std::move(name), std::move(value));
   }
   return size * nitems;
 }
@@ -131,12 +131,12 @@ Result<Response> Engine::PerformSingle(const Request& req) {
   }
 
   WriteBuffer body;
-  Headers headers;
+  Headers::Builder headers_builder;
   curl_slist* header_list = nullptr;
   curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, WriteCallback);
   curl_easy_setopt(easy, CURLOPT_WRITEDATA, &body);
   curl_easy_setopt(easy, CURLOPT_HEADERFUNCTION, HeaderCallback);
-  curl_easy_setopt(easy, CURLOPT_HEADERDATA, &headers);
+  curl_easy_setopt(easy, CURLOPT_HEADERDATA, &headers_builder);
 
   Error map_error =
       detail::ApplyEasyOptions(easy, req, options_, &header_list);
@@ -205,8 +205,9 @@ Result<Response> Engine::PerformSingle(const Request& req) {
   char* effective_url = nullptr;
   curl_easy_getinfo(easy, CURLINFO_EFFECTIVE_URL, &effective_url);
 
-  Response response(static_cast<int>(status_code), "", std::move(headers),
-                    std::move(body.data), !body.data.empty(),
+  Response response(static_cast<int>(status_code), "",
+                    headers_builder.Build(), std::move(body.data),
+                    !body.data.empty(),
                     effective_url ? effective_url : req.url(), nullptr);
   if (header_list) curl_slist_free_all(header_list);
   curl_easy_cleanup(easy);

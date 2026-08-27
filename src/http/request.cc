@@ -2,9 +2,6 @@
 
 #include "detail/http_constants.h"
 
-#include <cctype>
-#include <cstring>
-
 namespace cpp_network {
 namespace http {
 
@@ -22,54 +19,19 @@ bool LooksLikeAbsoluteUrl(const std::string& url) {
          url.rfind(HttpConstants::kHttpsScheme, 0) == 0;
 }
 
-bool HeaderNameEquals(const std::string& a, const char* b_lower) {
-  if (a.size() != std::strlen(b_lower)) return false;
-  for (std::size_t i = 0; i < a.size(); ++i) {
-    if (std::tolower(static_cast<unsigned char>(a[i])) != b_lower[i]) {
-      return false;
-    }
-  }
-  return true;
-}
-
-bool IsContentType(const std::string& name) {
-  return HeaderNameEquals(name, HttpConstants::kLowerContentTypeHeader);
-}
-
 }  // namespace
 
 std::optional<std::string> Request::GetHeader(const std::string& name) const {
-  for (const auto& [key, value] : headers_) {
-    if (key.size() == name.size()) {
-      bool eq = true;
-      for (std::size_t i = 0; i < name.size(); ++i) {
-        if (std::tolower(static_cast<unsigned char>(key[i])) !=
-            std::tolower(static_cast<unsigned char>(name[i]))) {
-          eq = false;
-          break;
-        }
-      }
-      if (eq) return value;
-    }
-  }
-  return std::nullopt;
+  return headers_.Get(name);
 }
 
 Request::Builder& Request::Builder::Body(const std::string& body) {
   body_ = body;
   has_body_ = true;
   // Default Content-Type: text/plain if not already set.
-  bool has_ct = false;
-  for (const auto& [name, value] : headers_) {
-    (void)value;
-    if (IsContentType(name)) {
-      has_ct = true;
-      break;
-    }
-  }
-  if (!has_ct) {
-    headers_.emplace_back(HttpConstants::kContentTypeHeader,
-                        HttpConstants::kTextPlainMime);
+  if (!headers_.Has(HttpConstants::kLowerContentTypeHeader)) {
+    headers_.Add(HttpConstants::kContentTypeHeader,
+                 HttpConstants::kTextPlainMime);
   }
   return *this;
 }
@@ -77,15 +39,10 @@ Request::Builder& Request::Builder::Body(const std::string& body) {
 Request::Builder& Request::Builder::JsonBody(const std::string& json) {
   body_ = json;
   has_body_ = true;
-  // Set or override Content-Type: application/json.
-  for (auto& [name, value] : headers_) {
-    if (IsContentType(name)) {
-      value = HttpConstants::kApplicationJsonMime;
-      return *this;
-    }
-  }
-  headers_.emplace_back(HttpConstants::kContentTypeHeader,
-                        HttpConstants::kApplicationJsonMime);
+  // Set or override Content-Type: application/json (replaces any existing
+  // case-insensitive occurrences).
+  headers_.Set(HttpConstants::kContentTypeHeader,
+               HttpConstants::kApplicationJsonMime);
   return *this;
 }
 
@@ -98,7 +55,11 @@ Result<Request> Request::Builder::Build() const {
     return Result<Request>::Err(
         Error(ErrorCode::kInvalidArgument, "URL must not contain CRLF"));
   }
-  for (const auto& [name, value] : headers_) {
+  for (const auto& [name, value] : headers_.fields()) {
+    if (name.empty()) {
+      return Result<Request>::Err(
+          Error(ErrorCode::kInvalidArgument, "header name must not be empty"));
+    }
     if (ContainsCrlf(name) || ContainsCrlf(value)) {
       return Result<Request>::Err(
           Error(ErrorCode::kInvalidArgument, "headers must not contain CRLF"));
@@ -115,7 +76,7 @@ Result<Request> Request::Builder::Build() const {
         Error(ErrorCode::kInvalidArgument, "timeout must be non-negative"));
   }
 
-  Request req(method_, url_, headers_, body_, has_body_, timeout_);
+  Request req(method_, url_, headers_.Build(), body_, has_body_, timeout_);
   return Result<Request>::Ok(std::move(req));
 }
 

@@ -5,8 +5,8 @@
 #include <optional>
 #include <string>
 #include <utility>
-#include <vector>
 
+#include "http/headers.h"
 #include "http/method.h"
 #include "http/export.h"
 #include "http/result.h"
@@ -14,8 +14,6 @@
 
 namespace cpp_network {
 namespace http {
-
-using Headers = std::vector<std::pair<std::string, std::string>>;
 
 // Immutable description of an outgoing HTTP request, built via Request::Builder.
 class CPP_NETWORK_HTTP_EXPORT Request {
@@ -52,11 +50,14 @@ class CPP_NETWORK_HTTP_EXPORT Request {
       return *this;
     }
     Builder& Header(const std::string& name, const std::string& value) {
-      headers_.emplace_back(name, value);
+      headers_.Add(name, value);
       return *this;
     }
     Builder& SetHeaders(const Headers& headers) {
-      headers_ = headers;
+      headers_ = Headers::Builder();
+      for (const auto& [name, value] : headers.fields()) {
+        headers_.Add(name, value);
+      }
       return *this;
     }
     Builder& Body(const std::string& body);
@@ -71,7 +72,7 @@ class CPP_NETWORK_HTTP_EXPORT Request {
    private:
     Method method_ = Method::kGet;
     std::string url_;
-    Headers headers_;
+    Headers::Builder headers_;
     std::string body_;
     bool has_body_ = false;
     std::optional<std::chrono::milliseconds> timeout_;

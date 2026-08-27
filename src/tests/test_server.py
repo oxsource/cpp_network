@@ -43,6 +43,15 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
         elif self.path == "/redirected":
             self._send(200, "redirected ok")
+        elif self.path == "/duplicates":
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Set-Cookie", "a=1; Path=/")
+            self.send_header("Set-Cookie", "b=2; Path=/")
+            self.send_header("X-Case-Test", "vAlUe")
+            self.send_header("Content-Length", "2")
+            self.end_headers()
+            self.wfile.write(b"ok")
         elif self.path == "/slow":
             import time
             time.sleep(5)

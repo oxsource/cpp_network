@@ -25,7 +25,7 @@ enum class CPP_NETWORK_HTTP_EXPORT VerifyMode {
 // certificates for mTLS, SNI override, and verification mode.
 //
 // Immutable value type: construct a fully configured instance via
-// Tls::Builder (or use the default instance for verified-peer TLS) — there
+// Tls::Builder (or use the default instance for verified-peer TLS); there
 // are no mutators, so an instance cannot change after it exists.
 class CPP_NETWORK_HTTP_EXPORT Tls {
  public:

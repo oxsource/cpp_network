@@ -31,19 +31,7 @@ std::optional<Stream> Response::stream() {
 }
 
 std::optional<std::string> Response::GetHeader(const std::string& name) const {
-  for (const auto& [key, value] : headers_) {
-    if (key.size() != name.size()) continue;
-    bool eq = true;
-    for (std::size_t i = 0; i < name.size(); ++i) {
-      if (std::tolower(static_cast<unsigned char>(key[i])) !=
-          std::tolower(static_cast<unsigned char>(name[i]))) {
-        eq = false;
-        break;
-      }
-    }
-    if (eq) return value;
-  }
-  return std::nullopt;
+  return headers_.Get(name);
 }
 
 }  // namespace http

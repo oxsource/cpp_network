@@ -90,7 +90,7 @@ Error ApplyEasyOptions(CURL* easy, const Request& req, const Options& options,
     }
   }
 
-  for (const auto& [name, value] : req.headers()) {
+  for (const auto& [name, value] : req.headers().fields()) {
     std::string line = name + ": " + value;
     curl_slist* item = curl_slist_append(*headers_out, line.c_str());
     if (!item) {
