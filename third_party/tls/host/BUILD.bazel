@@ -53,9 +53,9 @@ cc_library(
     hdrs = CURL_PUBLIC_HEADERS,
     strip_include_prefix = "include",
     # macOS builds compile lib/macos.c (CURL_MACOS_CALL_COPYPROXIES): it
-    # requires these two system frameworks at final-link time. Applied
-    # unconditionally here because the target is only analyzed for macOS/Linux
-    # host configs.
+    # requires these two system frameworks at final-link time. Linux static
+    # archives (libssl/libcrypto/libcurl) need pthread/dl/m on glibc (< 2.34
+    # splits them out of libc; newer glibc keeps no-op stubs for compat).
     linkopts = select({
         "//platforms:macos_arm64_setting": [
             "-framework CoreFoundation",
@@ -65,6 +65,8 @@ cc_library(
             "-framework CoreFoundation",
             "-framework SystemConfiguration",
         ],
+        "//platforms:linux_x86_64_setting": ["-lpthread", "-ldl", "-lm"],
+        "//platforms:linux_aarch64_setting": ["-lpthread", "-ldl", "-lm"],
         "//conditions:default": [],
     }),
 )
@@ -80,4 +82,9 @@ cc_library(
     ],
     hdrs = OPENSSL_PUBLIC_HEADERS,
     strip_include_prefix = "include",
+    linkopts = select({
+        "//platforms:linux_x86_64_setting": ["-lpthread", "-ldl", "-lm"],
+        "//platforms:linux_aarch64_setting": ["-lpthread", "-ldl", "-lm"],
+        "//conditions:default": [],
+    }),
 )

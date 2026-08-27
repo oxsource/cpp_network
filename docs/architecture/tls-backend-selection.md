@@ -95,7 +95,7 @@ cc_library(
 | 平台 | SSL 后端 | 验证等级 | 验证命令 |
 |------|----------|----------|----------|
 | macOS arm64 | OpenSSL（源码构建） | **runtime-verified**（specs/005 全量取证） | `bazel build --config=macos_arm64 //src/tests:device_e2e` |
-| Linux x86_64 | OpenSSL（源码构建） | analysis-only · executor pending | `bazel build --config=linux_x86_64 --nobuild //src/public:cpp_network ...` rc=0 |
+| Linux x86_64 | OpenSSL（源码构建） | analysis-only · executor pending | `bazel build --config=linux_x86_64 --nobuild //src/public:cpp_network ...` rc=0；`//third_party/tls/host:openssl/:curl` 已补 glibc 系统链接库（pthread/dl/m） |
 | Linux aarch64 | OpenSSL（源码构建） | analysis-only · executor pending | 同上，rc=0 |
 | Android arm64 | OpenSSL（源码构建） | **runtime-verified**（specs/004 真机 + 005 回归） | `make android_verify DEVICE=<serial>` |
 
