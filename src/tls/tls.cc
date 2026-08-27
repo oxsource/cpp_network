@@ -1,13 +1,6 @@
 #include "http/tls.h"
 
-#include <fcntl.h>
-#include <unistd.h>
-
-#include <cstdlib>
-#include <map>
-#include <mutex>
 #include <string>
-#include <vector>
 
 namespace cpp_network {
 namespace http {
@@ -78,37 +71,6 @@ Result<void> Tls::Validate() const {
 // static
 bool Tls::IsPemText(const std::string& value) {
   return value.find(kBeginMarker) != std::string::npos;
-}
-
-// static
-const char* Tls::CachedPemPath(const std::string& pem) {
-  static std::mutex mutex;
-  static std::map<std::string, std::string> cache;
-  std::lock_guard<std::mutex> lock(mutex);
-  auto it = cache.find(pem);
-  if (it != cache.end()) {
-    return it->second.c_str();
-  }
-
-  const char* tmpdir = std::getenv("TMPDIR");
-  std::string tmpl =
-      (tmpdir != nullptr && tmpdir[0] != '\0' ? std::string(tmpdir)
-                                              : std::string("/tmp")) +
-      "/cpp_network_pem_XXXXXX";
-  std::vector<char> buf(tmpl.begin(), tmpl.end());
-  buf.push_back('\0');
-  int fd = ::mkstemp(buf.data());
-  if (fd < 0) {
-    return nullptr;
-  }
-  ssize_t written = ::write(fd, pem.data(), pem.size());
-  ::close(fd);
-  if (written < 0 || static_cast<std::size_t>(written) != pem.size()) {
-    ::unlink(buf.data());
-    return nullptr;
-  }
-  // The map node keeps a stable copy; the returned pointer remains valid.
-  return cache.emplace(pem, std::string(buf.data())).first->second.c_str();
 }
 
 }  // namespace http

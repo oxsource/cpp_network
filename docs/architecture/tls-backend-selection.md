@@ -30,12 +30,12 @@ src/tls/
 └── tls.cc               # Tls::Validate() checks (CA exclusivity/mTLS pairing/SNI/PEM form)
 src/http/detail/
 ├── curl_mapping.cc      # Tls → CURLOPT_SSL_* mapping (applied per-request by the engine),
-                         # incl. blob → cached-file fallback (CachedPemPath)
+                         # inline PEM via *_BLOB direct (no fallback; see tls-config.md)
 src/public/include/http/
 └── tls.h                # Public types: cpp_network::http::Tls / VerifyMode
 ```
 
-- 无 `internal/ssl_backend.*`：映射直接内联在 HTTP 引擎的 curl_mapping 层（逐请求应用，且依赖 CachedPemPath 等传输期辅助）。
+- 无 `internal/ssl_backend.*`：映射直接内联在 HTTP 引擎的 curl_mapping 层（逐请求应用）。
 - libcurl 以**系统库**形式经 `linkopts = ["-lcurl"]` 链接；`@openssl//:openssl`、`@libcurl//:libcurl_openssl` 尚为占位（见 host-openssl-build.md 状态横幅）。OpenSSL 不作为独立 Bazel 依赖出现。
 - 验证矩阵中 macOS arm64 与 **Android arm64 均已实测通过（2026-08-27，specs/004）**：macOS 走系统 libcurl + https_test；Android 为源码交叉编译 OpenSSL 3.0.13 + curl 8.7.1 静态链接（真机/模拟器产物 `ELF aarch64`），Linux 构建配置就绪待验证。
 

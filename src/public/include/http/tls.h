@@ -49,17 +49,6 @@ class CPP_NETWORK_HTTP_EXPORT Tls {
   // and path-based CURLOPTs.
   static bool IsPemText(const std::string& value);
 
-  // Returns a stable filesystem path serving the given inline PEM content,
-  // creating and caching the backing file on first use. Needed only because
-  // some libcurl builds (e.g. macOS system library) declare the *_BLOB
-  // options but reject them at runtime; the mapping layer falls back to
-  // path-based CURLOPTs fed from this cache. The backing store is an
-  // implementation detail (currently a per-content temp file under $TMPDIR
-  // or /tmp) and must not be assumed by callers. Cached for the process
-  // lifetime, so the returned pointer stays valid across transfers.
-  // Returns nullptr on failure.
-  static const char* CachedPemPath(const std::string& pem);
-
   // Fluent builder producing an immutable Tls instance.
   //
   // Naming: SetCaPem stores CA certificate(s) as inline PEM text, SetCaFile

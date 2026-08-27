@@ -1,6 +1,7 @@
 #include "curl_mapping.h"
 
 #include "http_constants.h"
+#include "http/tls.h"
 
 #include <curl/curl.h>
 
@@ -203,77 +204,66 @@ Error ApplyEasyOptions(CURL* easy, const Request& req, const Options& options,
                    std::string("curl: failed to set CA file: ") + curl_easy_strerror(rc));
     }
   } else if (tls.ca_pem().has_value()) {
-    bool applied = false;
-#ifdef CURLOPT_CAINFO_BLOB
-    // Needs runtime curl >= 7.77 even when the header declares the option.
-    rc = curl_easy_setopt(easy, CURLOPT_CAINFO_BLOB, tls.ca_pem()->c_str());
-    applied = (rc == CURLE_OK);
-#endif
-    if (!applied) {
-      const char* ca_path = Tls::CachedPemPath(*tls.ca_pem());
-      if (ca_path == nullptr) {
-        return Error(ErrorCode::kInvalidArgument,
-                     "failed to materialize inline CA PEM for curl without "
-                     "CAINFO_BLOB support");
-      }
-      rc = curl_easy_setopt(easy, CURLOPT_CAINFO, ca_path);
-      if (rc != CURLE_OK) {
-        return Error(ErrorCode::kInvalidArgument,
-                     std::string("curl: failed to set CA file: ") +
-                         curl_easy_strerror(rc));
-      }
+    // Inline CA PEM flows via CURLOPT_CAINFO_BLOB (backend pins curl >= 7.77,
+    // so the option is always available; no temp-file fallback). Blobs are
+    // passed with CURL_BLOB_NOCOPY (NOMEMORY semantics): curl does not copy,
+    // so the Tls-owned string must outlive the transfer, which it does.
+    struct curl_blob ca_blob;
+    ca_blob.data = const_cast<char*>(tls.ca_pem()->data());
+    ca_blob.len = tls.ca_pem()->size();
+    ca_blob.flags = CURL_BLOB_NOCOPY;
+    rc = curl_easy_setopt(easy, CURLOPT_CAINFO_BLOB, &ca_blob);
+    if (rc != CURLE_OK) {
+      return Error(ErrorCode::kInvalidArgument,
+                   std::string("curl: failed to set inline CA PEM: ") +
+                       curl_easy_strerror(rc));
     }
   }
   if (tls.client_cert().has_value() && tls.client_key().has_value()) {
     // Inline PEM material (detected by Tls) is passed via *_BLOB options
-    // (runtime curl >= 7.71) with a temp-file fallback; anything else is
-    // treated as a file path.
+    // (backend pins curl >= 7.71); anything else is treated as a file path.
+    // Blobs are not copied by curl (CURL_BLOB_NOCOPY), so the Tls-owned
+    // strings must outlive the transfer, which they do.
     const bool cert_is_pem = Tls::IsPemText(*tls.client_cert());
     const bool key_is_pem = Tls::IsPemText(*tls.client_key());
 
-    bool cert_applied = false;
-    bool key_applied = false;
     if (cert_is_pem) {
-#ifdef CURLOPT_SSLCERT_BLOB
+      // curl_blob lives in easy.h; CURL_BLOB_NOCOPY tells libcurl not to
+      // copy, so the Tls-owned string must outlive the transfer, which it
+      // does. const_cast is safe: libcurl only reads the buffer.
       struct curl_blob cert_blob;
-      cert_blob.data = tls.client_cert()->data();
+      cert_blob.data = const_cast<void*>(
+          static_cast<const void*>(tls.client_cert()->data()));
       cert_blob.len = tls.client_cert()->size();
-      cert_blob.flags = CURLBLOB_NOMEMORY;
+      cert_blob.flags = CURL_BLOB_NOCOPY;
       rc = curl_easy_setopt(easy, CURLOPT_SSLCERT_BLOB, &cert_blob);
-      cert_applied = (rc == CURLE_OK);
-#endif
-    }
-    if (key_is_pem) {
-#ifdef CURLOPT_SSLKEY_BLOB
-      struct curl_blob key_blob;
-      key_blob.data = tls.client_key()->data();
-      key_blob.len = tls.client_key()->size();
-      key_blob.flags = CURLBLOB_NOMEMORY;
-      rc = curl_easy_setopt(easy, CURLOPT_SSLKEY_BLOB, &key_blob);
-      key_applied = (rc == CURLE_OK);
-#endif
-    }
-
-    const char* cert_path =
-        cert_is_pem ? Tls::CachedPemPath(*tls.client_cert())
-                    : tls.client_cert()->c_str();
-    const char* key_path = key_is_pem ? Tls::CachedPemPath(*tls.client_key())
-                                      : tls.client_key()->c_str();
-    if (cert_path == nullptr || key_path == nullptr) {
-      return Error(ErrorCode::kInvalidArgument,
-                   "failed to materialize inline client certificate/key PEM "
-                   "for curl without BLOB support");
-    }
-    if (!cert_applied) {
-      rc = curl_easy_setopt(easy, CURLOPT_SSLCERT, cert_path);
+      if (rc != CURLE_OK) {
+        return Error(ErrorCode::kInvalidArgument,
+                     std::string("curl: failed to set client cert blob: ") +
+                         curl_easy_strerror(rc));
+      }
+    } else {
+      rc = curl_easy_setopt(easy, CURLOPT_SSLCERT, tls.client_cert()->c_str());
       if (rc != CURLE_OK) {
         return Error(ErrorCode::kInvalidArgument,
                      std::string("curl: failed to set client cert: ") +
                          curl_easy_strerror(rc));
       }
     }
-    if (!key_applied) {
-      rc = curl_easy_setopt(easy, CURLOPT_SSLKEY, key_path);
+    if (key_is_pem) {
+      struct curl_blob key_blob;
+      key_blob.data = const_cast<void*>(
+          static_cast<const void*>(tls.client_key()->data()));
+      key_blob.len = tls.client_key()->size();
+      key_blob.flags = CURL_BLOB_NOCOPY;
+      rc = curl_easy_setopt(easy, CURLOPT_SSLKEY_BLOB, &key_blob);
+      if (rc != CURLE_OK) {
+        return Error(ErrorCode::kInvalidArgument,
+                     std::string("curl: failed to set client key blob: ") +
+                         curl_easy_strerror(rc));
+      }
+    } else {
+      rc = curl_easy_setopt(easy, CURLOPT_SSLKEY, tls.client_key()->c_str());
       if (rc != CURLE_OK) {
         return Error(ErrorCode::kInvalidArgument,
                      std::string("curl: failed to set client key: ") +

@@ -228,8 +228,8 @@ do_run() {
     stage_system_ca_bundle
   fi
 
-  # TMPDIR: inline-PEM fallback (CachedPemPath) must land inside the confined
-  # work dir, never /tmp (not writable for shell users).
+  # TMPDIR: keep any scratch writes inside the confined work dir,
+  # never /tmp (not writable for shell users).
   local envline="TMPDIR=$DEVICE_DIR/tmp NETLIB_TEST_DATA_DIR=$DEVICE_DIR NETLIB_TEST_EXT_CA_BUNDLE=$DEVICE_DIR/certs/system_cacerts.pem"
 
   if [ "$RUN_MODE" = "local" ]; then

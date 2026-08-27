@@ -59,7 +59,7 @@ TLS 由 libcurl 的 SSL 后端承担，**后端跟随平台惯例，不做统一
 
 **动机（收益）**:
 - 跨平台行为逐项一致（specs/005 US1 已取证）：证书校验语义、内存注入通道、符号行为不再随发行版/用户机器漂移
-- macOS 系统 curl 的 BLOB 运行时怪癖随之消失（specs/004 被迫引入的 CachedPemPath 兜底转历史兼容定位）
+- macOS 系统 curl 的 BLOB 运行时怪癖随之消失（specs/004 被迫引入的 CachedPemPath 兜底失去存在依据，已连同接口一并移除，映射层内联 PEM 改为 `*_BLOB` 直达、fail-fast）
 - 可重现性提升：不再依赖系统 libcurl 的版本/编译选项差异
 
 **成本声明（本项目承接的安全运营责任）**:

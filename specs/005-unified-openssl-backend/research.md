@@ -55,3 +55,5 @@
 **Alternatives considered**: opt-in 配置渐进式。用户已明确选择直接切换。Superseded by user decision。
 
 **D3 验证补记（Phase 2 实测）**：S3 内存注入在全平台统一 bundle 上确认**零临时文件**产生（运行前后 `/tmp/cpp_network_pem_*` 计数均为 0），Blob 直达通道生效；CachedPemPath 兜底保留但不再被任何受支持平台触发（历史兼容定位成立）。
+
+**D5 收口补记（合并后 API 清理）**：基于 D3 的零临时文件实证，`Tls::CachedPemPath` 及"blob 失败→临时文件"回退链整体移除（公共 API -1）；curl_mapping 内联 PEM 改为 `*_BLOB` 直达、setopt 失败即 fail-fast，同时消除私钥明文落盘路径。映射层对 BLOB 能力的前提由版本锁定（单一事实源）+ 升级演练保证；若未来重新引入系统传输层，可自 git 历史恢复该兜底。

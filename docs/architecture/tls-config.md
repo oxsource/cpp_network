@@ -77,16 +77,18 @@ class Tls {
 | `verify_mode == kVerifyPeer` | `CURLOPT_SSL_VERIFYPEER = 1`，`CURLOPT_SSL_VERIFYHOST = 2` |
 | `verify_mode == kSkipVerification` | `CURLOPT_SSL_VERIFYPEER = 0`，`CURLOPT_SSL_VERIFYHOST = 0` |
 | `ca_file` 非空 | `CURLOPT_CAINFO`（文件路径） |
-| `ca_pem`（内存 PEM） | `CURLOPT_CAINFO_BLOB`（运行时 curl ≥7.77）；失败回退临时文件 → `CURLOPT_CAINFO` |
-| 客户端证书/私钥为内联 PEM | `CURLOPT_SSLCERT_BLOB`/`SSLKEY_BLOB`（运行时 curl ≥7.71）；失败回退临时文件 → `CURLOPT_SSLCERT`/`SSLKEY` |
+| `ca_pem`（内存 PEM） | `CURLOPT_CAINFO_BLOB`（后端锁定 curl ≥7.77，直达） |
+| 客户端证书/私钥为内联 PEM | `CURLOPT_SSLCERT_BLOB`/`SSLKEY_BLOB`（后端锁定 curl ≥7.71，直达） |
 | 客户端证书/私钥为文件路径 | `CURLOPT_SSLCERT` / `CURLOPT_SSLKEY` |
 | `sni` | `CURLOPT_SNI_HOSTNAME`（编译期 `#ifdef` 保护） |
 
-### Blob 运行时回退（Tls::CachedPemPath）
+### 内联 PEM 直达语义（specs/005 收口）
 
-> **specs/005 状态更新（2026-08-27）**：全平台统一源码构建后，锁定的 curl 8.7.1 在所有平台上 `*_BLOB` 运行时均原生可用——实测内存注入后临时文件兜底计数为 **0**（specs/005 evidence/macos-arm64-runtime.md）。以下回退机制保留为历史兼容路径（未来若引入旧版传输层才可能触发）。
+内联 PEM 的判定由 `Tls::IsPemText` 提供；映射层对 `*_BLOB` 选项**直达、无回退**：setopt 失败即 fail-fast 返回明确错误，不再落临时文件。这一收敛的依据：
 
-部分系统 libcurl（如 macOS 系统库）在头文件中声明了 `*_BLOB` 选项，但运行时对未支持的选项返回 `CURLE_FAILED_INIT`。内联 PEM 的判定（`Tls::IsPemText`）与缓存落地（`Tls::CachedPemPath`，get-or-create 返回稳定文件路径）均由 `Tls` 静态方法提供，映射层采用"先 blob、后缓存文件"的两级策略：文件按 PEM 内容缓存（进程生命周期内有效，保证路径跨传输可用），当前实现写入 `$TMPDIR/cpp_network_pem_XXXXXX`；落盘位置属实现细节，后续可能调整（如改用内存盘或专用缓存目录），调用方不得假设。
+1. 全平台唯一后端为源码锁定 curl 8.7.1，BLOB 能力在构建期即成立（单一事实源 `cpp_network_deps.bzl` 钉版本，升级演练保证未来 bump 不低于 7.71/7.77 阈值）；
+2. 历史上的"blob 失败→临时文件"两级策略为 macOS **系统** libcurl 运行时怪癖而生（specs/004），specs/005 移除系统传输层后该路径永不触发，实测零临时文件（research.md D3 补记）；
+3. 直达语义同时消除了"私钥以明文落盘"的安全降级路径。`Tls::CachedPemPath` 接口已随之从公共 API 移除（需要时可自 git 历史找回）。
 
 ## 平台差异收敛
 
