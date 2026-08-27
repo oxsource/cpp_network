@@ -58,7 +58,7 @@
 - [x] T006 [P] [US1] Add test-asset root resolution honoring `NETLIB_TEST_DATA_DIR` env override (default repo-relative `src/tests/certs/`) as a shared helper header in src/tests/, and switch cert path construction in src/tests/https_test.cc to use it (contracts/device-test-contract.md 覆写点，宿主行为不变)
 - [x] T007 [US1] Implement src/tests/device_e2e.cc: self-contained scenario orchestration S1–S7 using public API only (default-reject / SetCaFile / SetCaPem / mTLS without client cert / mTLS with client cert / kSkipVerification / HTTP 404 baseline) against `127.0.0.1:<ports>` bases overridable via env (data-model.md Entity 4, exit-code = first-failing-scenario-id+1, continue-on-failure, final `PASS <n>/<total>` line)
 - [x] T008 [US1] Register device_e2e cc_binary in src/tests/BUILD.bazel linking //src/http:client + public_headers so it builds for both host (smoke) and android_arm64
-- [ ] T009 (BLOCKED: no device attached — run `adb devices` and connect/authorize one) [US1] Manually validate all four HTTPS scenarios on a real device/emulator following contracts/device-test-contract.md topology (test servers stay on host; adb reverse channels; record evidence for FR-010): default reject error matches host ErrorCode, CA file/in-memory/mTLS/skip succeed (SC-001)
+- [x] T009 [US1] Manually validate all four HTTPS scenarios on a real device/emulator following contracts/device-test-contract.md topology (test servers stay on host; adb reverse channels; record evidence for FR-010): default reject error matches host ErrorCode, CA file/in-memory/mTLS/skip succeed (SC-001)
 
 **Checkpoint**: 不依赖任何 make 目标，即可在设备上复现与主机一致的 HTTPS 行为——US1 独立成立（spec US1 验收场景 1–4 全部通过）
 

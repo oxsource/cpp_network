@@ -147,24 +147,107 @@ ensure_pushed() {
     do_push
   }
 }
+
+# Merge the Android system trust store into a single PEM bundle inside the
+# confined work dir. This is the documented FR-003 pattern: Android offers no
+# c_hash'ed CAPATH or single-file bundle consumable by libcurl/OpenSSL, so
+# applications must derive their trust anchor by explicit injection.
+stage_system_ca_bundle() {
+  "$ADB" $(sflag) shell \
+    "mkdir -p '$DEVICE_DIR/certs' && cat /system/etc/security/cacerts/* > '$DEVICE_DIR/certs/system_cacerts.pem'" \
+    || die "failed to build system CA bundle on device" 6
+  "$ADB" $(sflag) shell "test -s '$DEVICE_DIR/certs/system_cacerts.pem'" \
+    || die "system CA bundle came out empty" 6
+}
 # ---- run ------------------------------------------------------------------
-# External-internet validation mode (specs/004 revised scope): device and
-# host share no network segment, so `run` executes the e2e against public
-# HTTPS endpoints directly from the device's own connectivity — no host
-# fixtures, no adb reverse, no PORTS. Local-fixture scenarios remain
-# available via NETLIB_TEST_MODE=local on hosts running src/tests fixtures.
+# Two validation modes (specs/004 contracts/device-test-contract.md):
+#
+# external (default): device_e2e hits public HTTPS endpoints using the
+#   device's own connectivity — no host involvement, network-segment free.
+# local (RUN_MODE=local): self-signed / mTLS scenarios S1-S7 need reachable
+#   fixtures. `adb reverse` tunnels the DEVICE's 127.0.0.1:<port> back to the
+#   HOST over the USB link, so host/device sharing no Wi-Fi segment is fine —
+#   a cabled connection is what matters. Host fixtures are launched here and
+#   torn down when done.
+RUN_MODE="${RUN_MODE:-external}"
+FIXTURE_PORTS="18080 18443 18444"
+PIDS_FILE="/tmp/cpp_network_e2e_servers.pids"
+LOGDIR="/tmp/cpp_network_e2e_logs"
+
+port_listening() { nc -z 127.0.0.1 "$1" >/dev/null 2>&1; }
+
+fixtures_up() {
+  mkdir -p "$LOGDIR"
+  python3 "$REPO_ROOT/src/tests/test_server.py" --port 18080 \
+    >"$LOGDIR/http.log" 2>&1 &
+  echo $! >> "$PIDS_FILE"
+  python3 "$REPO_ROOT/src/tests/test_tls_server.py" --port 18443 \
+    >"$LOGDIR/tls.log" 2>&1 &
+  echo $! >> "$PIDS_FILE"
+  python3 "$REPO_ROOT/src/tests/test_tls_server.py" --port 18444 \
+    --require-client-cert >"$LOGDIR/mtls.log" 2>&1 &
+  echo $! >> "$PIDS_FILE"
+
+  for i in $(seq 1 50); do
+    if port_listening 18080 && port_listening 18443 && port_listening 18444; then
+      echo "[android] host fixtures ready (:18080/:18443/:18444)"
+      return 0
+    fi
+    sleep 0.1
+  done
+  fixtures_down
+  die "host fixtures failed to start within 5s — see $LOGDIR" 7
+}
+
+fixtures_down() {
+  if [ -f "$PIDS_FILE" ]; then
+    while read -r p; do kill "$p" 2>/dev/null || true; done < "$PIDS_FILE"
+    rm -f "$PIDS_FILE"
+  fi
+}
+
+reverse_up() {
+  local p
+  for p in $FIXTURE_PORTS; do
+    "$ADB" $(sflag) reverse "tcp:$p" "tcp:$p" || die "adb reverse failed for tcp:$p" 7
+  done
+}
+reverse_down() {
+  local p
+  for p in $FIXTURE_PORTS; do "$ADB" $(sflag) reverse --remove "tcp:$p" 2>/dev/null || true; done
+}
+
 do_run() {
   validate_device_dir
   select_device_or_exit
   ensure_pushed
 
-  # TMPDIR: local-future inline-PEM fallback (CachedPemPath) must land inside
-  # the confined work dir, never /tmp (not writable for shell users).
-  local envline="TMPDIR=$DEVICE_DIR/tmp NETLIB_TEST_DATA_DIR=$DEVICE_DIR/certs"
+  if [ "${RUN_MODE:-external}" != "local" ]; then
+    # Verified-peer requests need an anchor; merge the device's own system
+    # trust store into an injectable bundle (FR-003 documented pattern).
+    stage_system_ca_bundle
+  fi
+
+  # TMPDIR: inline-PEM fallback (CachedPemPath) must land inside the confined
+  # work dir, never /tmp (not writable for shell users).
+  local envline="TMPDIR=$DEVICE_DIR/tmp NETLIB_TEST_DATA_DIR=$DEVICE_DIR NETLIB_TEST_EXT_CA_BUNDLE=$DEVICE_DIR/certs/system_cacerts.pem"
+
+  if [ "$RUN_MODE" = "local" ]; then
+    if [ ! -f "$REPO_ROOT/src/tests/test_tls_server.py" ]; then
+      die "run from the repository root so fixture scripts resolve" 7
+    fi
+    trap fixtures_down EXIT INT TERM
+    fixtures_up
+    reverse_up
+    envline="$envline NETLIB_TEST_MODE=local NETLIB_TEST_HTTP_BASE=http://127.0.0.1:18080 NETLIB_TEST_HTTPS_BASE=https://127.0.0.1:18443 NETLIB_TEST_MTLS_BASE=https://127.0.0.1:18444"
+  fi
+
   local cmd="cd '$DEVICE_DIR' && $envline ./device_e2e 2>&1; echo $SENTINEL:\$?"
 
   "$ADB" $(sflag) shell "$cmd" 2>&1 | tee /tmp/cpp_network_device_stream.log \
         | awk -v s="$SENTINEL:" '{ if (index($0, s)==1) { c=substr($0, length(s)+1); next } print; fflush() } END { fflush(); print c+0 > "/tmp/cpp_network_exit_code" }'
+
+  if [ "${RUN_MODE:-}" = "local" ]; then reverse_down; fixtures_down; trap - EXIT INT TERM; fi
   local code
   code="$(cat /tmp/cpp_network_exit_code 2>/dev/null || echo 255)"
   rm -f /tmp/cpp_network_exit_code

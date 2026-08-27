@@ -77,7 +77,7 @@ build:android_arm64 --incompatible_enable_cc_toolchain_resolution=true
 **Decision**: 新增独立 `src/tests/device_e2e.cc`（自包含客户端场景编排、聚合退出码），不把既有 gtest 集成套件原样搬上设备：
 - 既有集成测试在设备上不可直接运行——它们 fork 宿主机 python3 测试服务器，Android shell 无 python3
 - e2e 将四类 HTTPS 场景 + HTTP 基线对准 `127.0.0.1:<port>`，端口与宿主服务之间经 `adb reverse` 打通；测试服务器与证书全部驻留宿主（FR-009）
-- 测试资产根目录引入环境变量覆盖：`NETLIB_TEST_DATA_DIR`（默认沿用现仓库相对路径 `src/tests/certs/...`）；设备端运行时设为 `/data/local/tmp/cpp_network/certs`
+- 测试资产根目录引入环境变量覆盖：`NETLIB_TEST_DATA_DIR`（默认沿用现仓库相对路径 `src/tests/certs/...`）；设备端运行时设为 `/data/local/tmp/cpp_network`（helper 自动拼 `certs/` 子目录）
 - 宿主侧 Google Test 套件继续作为全量回归；Android 架构的 gtest 编译通过列为构建验收项之一
 
 **Rationale**: 测试服务器留驻宿主使设备端二进制最小化（免 python/脚本分发），同时真实穿透 adb reverse 通道模拟应用联网路径；单二进制 + 明确退出码契合 make run 的自动化契约。
@@ -137,3 +137,16 @@ build:android_arm64 --incompatible_enable_cc_toolchain_resolution=true
 **新增防护 `validate_device_dir`**：DEVICE_DIR 必须位于 `/data/local/tmp/**` 且不含 `..`，否则 exit 64 拒绝执行任何动作。实测：`/system`→64、含 `..` 穿越→64、空串回落默认目录、合规外网全链路回归 PASS 3/3。
 
 **运行时零 root 断言**：全部写入收敛于 `/data/local/tmp/**`（adb shell 用户可写）；无系统分区访问点。
+
+## D10 补记（Phase 6/7 实施）：local 模式编排 reinstated
+
+用户确认真机验证自签/mTLS 必须 `adb reverse`（USB 回环天然免疫网段差异）。`android_device.sh run` 重启 `RUN_MODE=external|local` 双模式：local 启动宿主 fixtures(:18080/:18443/:18444) + 三条 reverse + 注入 `NETLIB_TEST_MODE=local` 与三个 BASE 变量，结束自动 teardown。同时修正资产根目录注入语义（`NETLIB_TEST_DATA_DIR=$DEVICE_DIR`，helper 内部拼 `certs/`），消除 certs/certs 双层路径。仿真验证：local PASS 7/7 exit0；external 回归 PASS 3/3 exit0。
+
+## D11 T009 真机取证 & 一键证书验证目标（2026-08-27）
+
+设备：be11（USB，serial an4009056e01d0d04，SELinux Permissive 无关紧要）。
+
+1. **默认拒的真机负证据**：外网直连首次运行 3 场景全部 `kCertificateVerificationFailed`（我们源码 curl 显式 --without-ca-* 且 Android 无可消费默认信任库——印证 ADR-003/FR-003）。
+2. **修复路径**：`stage_system_ca_bundle` 在设备端将 `/system/etc/security/cacerts/*` 合并为单 bundle 注入（FR-003 文档化模式，不改动库语义）。注意 cat 重定向发生在设备 shell 内部。
+3. **`make verify-android` 一键闭环**：build-android → push → RUN_MODE=local(S1–S7 经 reverse) → external(E1–E3) 顺序执行，实测输出：`PASS 7/7` + `PASS 3/3`、整体退出码 0；期间发现并修复 stage 函数未接线的遗漏。
+4. 实施中三次修正同一类问题（本地 vs 注入语义）：资产根目录统一为 helper 内拼 certs/ 的 TestAssetRoot 约定。

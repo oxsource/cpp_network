@@ -62,14 +62,34 @@ struct Scenario {
 // Default (external) mode: real-world HTTPS against public endpoints — the
 // user-approved validation scope for Android devices whose network differs
 // from the development host (no shared segment, no adb reverse needed).
+//
+// Trust anchor per the documented FR-003/ADR-003 pattern: when
+// NETLIB_TEST_EXT_CA_BUNDLE is set, scenarios inject it via Tls::Builder —
+// mirroring a real app deriving its anchor from /system/etc/security/cacerts.
+// Without it the verified-peer requests fail exactly like they do on hosts
+// without any matching CA.
 std::string ExtSiteBase() {
   const char* v = std::getenv("NETLIB_TEST_EXT_BASE");
   return (v != nullptr && *v != '\0') ? std::string(v)
                                       : std::string("https://example.com");
 }
 
+std::string ExtCaBundle() {
+  const char* v = std::getenv("NETLIB_TEST_EXT_CA_BUNDLE");
+  return (v != nullptr && *v != '\0') ? std::string(v) : std::string();
+}
+
+Options VerifiedWithExtAnchor() {
+  Options options = ShortTimeouts();
+  std::string bundle = ExtCaBundle();
+  if (!bundle.empty()) {
+    options.SetTls(Tls::Builder().SetCaFile(bundle).Build());
+  }
+  return options;
+}
+
 bool E1_SiteGet(std::string* detail) {
-  auto client = Client::Create(ShortTimeouts());
+  auto client = Client::Create(VerifiedWithExtAnchor());
   if (!client.ok()) {
     *detail = client.error().message();
     return false;
@@ -91,7 +111,7 @@ bool E1_SiteGet(std::string* detail) {
 }
 
 bool E2_SiteHeaderRead(std::string* detail) {
-  auto client = Client::Create(ShortTimeouts());
+  auto client = Client::Create(VerifiedWithExtAnchor());
   if (!client.ok()) {
     *detail = client.error().message();
     return false;
@@ -114,7 +134,7 @@ bool E2_SiteHeaderRead(std::string* detail) {
 }
 
 bool E3_PostJsonEcho(std::string* detail) {
-  auto client = Client::Create(ShortTimeouts());
+  auto client = Client::Create(VerifiedWithExtAnchor());
   if (!client.ok()) {
     *detail = client.error().message();
     return false;

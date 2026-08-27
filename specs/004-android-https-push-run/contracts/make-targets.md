@@ -12,6 +12,7 @@ Makefile 顶层入口经由 `mk/android.mk` 注册；目标名、变量与退出
 | `make push [DEVICE=<serial>]` | 解析最新产物并推送二进制 + `src/tests/certs/` 到设备 `/data/local/tmp/cpp_network/` | 至少一台可用设备；产物为非 stale | adb push 全部成功 |
 | `make run [DEVICE=<serial>]` | 远端执行 device_e2e（默认外网 HTTPS 场景）→ 输出实时回传 | push 已完成或自动触发 | e2e 退出码透传为 make 退出码 |
 | `make clean-device [DEVICE=<serial>]` | 删除设备端 `$DEVICE_DIR` 内容 | 可用设备存在 | 清理成功（目录不存在亦视为成功） |
+| `make verify-android [DEVICE=<serial>]` | **一键证书验证**：build → push → local(S1–S7 经 reverse) → external(E1–E3 注入系统信任 bundle) 全链顺序执行 | NDK r26+ 与一台已授权设备 | 两段 run 退出码均 0，`PASS 7/7` + `PASS 3/3` |
 
 ## Variables
 

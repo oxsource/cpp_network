@@ -35,3 +35,16 @@ run:
 MK_TARGETS += clean-device
 clean-device:
 	bash tools/android_device.sh clean
+
+# One-click certificate verification on a connected device (specs/004 US1/US4):
+#   build -> push -> RUN_MODE=local (S1-S7 self-signed/mTLS over adb reverse)
+#                 -> RUN_MODE=external (E1-E3 public HTTPS with the system
+#                    trust bundle merged from /system/etc/security/cacerts).
+.PHONY: verify-android
+MK_TARGETS += verify-android
+verify-android: build-android push
+	@echo "[android] certificate verification: local-fixture scenarios..."
+	RUN_MODE=local bash tools/android_device.sh run
+	@echo "[android] certificate verification: external internet scenarios..."
+	bash tools/android_device.sh run
+	@echo "[android] verify-android OK"
