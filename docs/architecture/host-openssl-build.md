@@ -36,7 +36,7 @@
 third_party/
 ├── openssl/
 │   ├── BUILD.bazel          # Wraps @openssl//:ssl, @openssl//:crypto + libcrypto
-│   └── openssl.bzl          # Version pinning (3.x LTS) + sha256 verification
+│   └── openssl_external.BUILD # Injected file list; pins live in cpp_network_deps.bzl
 └── libcurl/
     ├── BUILD.bazel
     │   └── :libcurl_openssl      # All-platform target (OpenSSL backend, host + Android)
@@ -83,7 +83,7 @@ cc_library(
 
 ## OpenSSL 版本与安全基线
 
-- **锁定 OpenSSL 3.x LTS**（如 3.0.x/3.3.x），并在 `openssl.bzl` 固定 commit + sha256。
+- **锁定 OpenSSL 3.x LTS**（如 3.0.x/3.3.x），并在 `cpp_network_deps.bzl` 固定 tag + sha256（现为 3.0.13，Android 分支已实测）。
 - OpenSSL 3.x 启用默认安全级别（`SECLEVEL=2`），满足 TLS 1.2+ 默认；如需调整由 `TlsConfig` 未来暴露（v1 不动）。
 - 安全公告跟进由依赖版本升级流程覆盖（记录在 ADR）。
 

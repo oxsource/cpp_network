@@ -6,7 +6,7 @@
 
 ## D1: Android TLS 加密后端选型
 
-**Decision**: OpenSSL 3.0.13 LTS（复用 `third_party/openssl/openssl.bzl` 已锁定版本），源码交叉编译、静态链接进 libcurl。
+**Decision**: OpenSSL 3.0.13 LTS（复用 `cpp_network_deps.bzl` 中锁定的版本），源码交叉编译、静态链接进 libcurl。
 
 **Rationale**:
 - 版本已在 001/002 工程结构阶段 pin 定（URL + SHA256），无版本漂移风险；LTS 支持窗口长
@@ -33,7 +33,7 @@
 
 **Alternatives considered**:
 - **预编译产物入库**：体积大、许可证与供应链审计差、无法随 NDK 升级重建。Rejected。
-- **curl 的 CMake 构建路径**：功能等价；选 autotools 是因 openssl.bzl 同走 configure/make 家族，工具链变量传递方式统一。Rejected（等价备选）。
+- **curl 的 CMake 构建路径**：功能等价；选 autotools 是因 curl 与 openssl 同走 configure/make 家族，工具链变量传递方式统一。Rejected（等价备选）。
 
 **构建机制**: `rules_foreign_cc`（Bazel 6.5 兼容线）的 `configure_make` / `autotools` 规则承载两个第三方项目；NDK 工具链由 `android_ndk_repository` 提供的 clang wrapper（`CC/CXX/AR/RANLIB` 及 sysroot flags）透传。
 

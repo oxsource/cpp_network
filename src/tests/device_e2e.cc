@@ -15,7 +15,6 @@
 #include <fstream>
 #include <sstream>
 #include <string>
-#include <vector>
 
 #include "test_util.h"
 

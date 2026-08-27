@@ -57,13 +57,10 @@ platforms/BUILD                     # android_arm64 platform 已就绪（无需�
 tools/platform_setup.sh             # 增加 NDK 检测提示（ANDROID_NDK_HOME）
 WORKSPACE                           # 注册 rules_foreign_cc + android_ndk_repository
 third_party/openssl/
-├── openssl.bzl                     # 版本已 pin（复用）
-└── BUILD.bazel                     # android 分支：configure_make 产物 ssl/crypto；
-                                    #   host 分支保持系统占位（select 切换）
+├── openssl_external.BUILD           # 注入 @openssl 的文件清单；pin 见 cpp_network_deps.bzl
+└── BUILD.bazel                      # 包标记（host 保持系统栈）
 third_party/libcurl/
-├── libcurl.bzl                     # 版本已 pin（复用）
-└── BUILD.bazel                     # android 分支：autotools --with-openssl，
-                                    #   协议裁剪 http/https；host 继续系统 -lcurl
+└── curl_external.BUILD              # 注入 @curl 的文件清单（构建编排见 third_party/androidtls）
 src/http/BUILD.bazel                # linkopts/select：host=-lcurl；android=@libcurl//:curl
 mk/android.mk                       # build-android / push / run / clean-device 目标
 Makefile                            # include mk/android.mk

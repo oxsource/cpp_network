@@ -37,7 +37,7 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [x] T003 Implement third_party/openssl/BUILD.bazel android branch: rules_foreign_cc `configure_make` building pinned OpenSSL 3.0.13 (third_party/openssl/openssl.bzl) into static `ssl`/`crypto` targets under config_setting android_arm64, keeping the host stub intact via select() (research.md D1/D2)
+- [x] T003 Implement third_party/openssl/BUILD.bazel android branch: rules_foreign_cc `configure_make` building pinned OpenSSL 3.0.13 (pin 集中于 cpp_network_deps.bzl) into static `ssl`/`crypto` targets under config_setting android_arm64, keeping the host stub intact via select() (research.md D1/D2)
 - [x] T004 Implement third_party/libcurl/BUILD.bazel android branch: autotools build of pinned curl 8.7.1 with `--with-openssl=<openssl install>` + `--enable-static --disable-shared` + protocol trim to HTTP/HTTPS (`--disable-*` extras per research.md D2); expose `curl` cc_library target (depends on T003)
 - [x] T005 Switch src/http/BUILD.bazel engine/client linkopts to select(): host keeps `-lcurl`; android_arm64 links the source-built curl target (T004); then verify `bazel build --config=macos_arm64 //src/public:cpp_network` still passes and `bazel build --config=android_arm64 //src/public:cpp_network` produces arm64-v8a outputs (FR-010 zero-regression gate)
 
