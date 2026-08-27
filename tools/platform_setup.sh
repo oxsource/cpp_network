@@ -37,7 +37,7 @@ echo "[platform_setup] wrote $USER_BAZELRC"
 
 # --- Android toolchain readiness checks (specs/004 T002) --------------------
 # Informational only: exits 0 regardless so host-only workflows stay green.
-# The build-android target performs the authoritative fail-fast check later
+# The android_build target performs the authoritative fail-fast check later
 # (contracts/make-targets.md).
 
 check_ndk() {
@@ -52,7 +52,7 @@ check_ndk() {
         echo "[platform_setup]           export ANDROID_NDK_HOME=$candidate"
       fi
     done
-    echo "[platform_setup]         install hint: download NDK r26+ from"
+    echo "[platform_setup]         install hint: download NDK r25+ from"
     echo "[platform_setup]           developer.android.com/ndk/downloads"
     return 0
   fi
@@ -67,10 +67,10 @@ check_ndk() {
   case "$major" in
     ''|*[!0-9]*) major=0 ;;
   esac
-  if [ "$major" -ge 26 ]; then
+  if [ "$major" -ge 25 ]; then
     echo "[platform_setup] NDK    : ok ($rev at $root)"
   else
-    echo "[platform_setup] NDK    : too old ($rev, requires r26+): $root"
+    echo "[platform_setup] NDK    : too old ($rev, requires r25+): $root"
     echo "[platform_setup]         hint: install a newer NDK and update ANDROID_NDK_HOME"
   fi
 }

@@ -92,9 +92,9 @@ sflag() { echo "-s $SER"; }
 # ---- push -----------------------------------------------------------------
 stage_binaries() {
   # Prefer the android-config outputs when present (built by make
-  # build-android); fall back to whatever the workspace symlink exposes.
+  # android_build); fall back to whatever the workspace symlink exposes.
   local dev="$REPO_ROOT/bazel-bin/src/tests/device_e2e"
-  [ -f "$dev" ] || die "device binary missing — run 'make build-android' first" 3
+  [ -f "$dev" ] || die "device binary missing — run 'make android_build' first" 3
   echo "$dev"
 }
 

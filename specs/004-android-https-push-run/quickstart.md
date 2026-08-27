@@ -4,10 +4,10 @@
 
 ## 一次性环境准备
 
-1. 安装 Android 平台工具（含 `adb`）与 NDK r26+，导出环境变量：
+1. 安装 Android 平台工具（含 `adb`）与 NDK r25+，导出环境变量：
 
 ```bash
-export ANDROID_NDK_HOME=/path/to/android-ndk-r26d   # r26+ 建议版本
+export ANDROID_NDK_HOME=/path/to/android-ndk-r25c   # r25+（本机示例路径可不同）
 export PATH="$PATH:/path/to/android-sdk/platform-tools"  # 提供 adb
 ```
 
@@ -26,7 +26,7 @@ tools/platform_setup.sh    # 会提示 ANDROID_NDK_HOME 与 adb 是否就绪
 ## 构建 Android 产物
 
 ```bash
-make build-android
+make android_build
 # 产出：cpp_network（arm64-v8a）+ 设备端可执行程序 device_e2e / http_demo
 ```
 
@@ -35,8 +35,8 @@ make build-android
 ## 一键部署运行
 
 ```bash
-make push DEVICE=<serial>     # 可省略 DEVICE=…（仅一台设备时自动选择）
-make run  DEVICE=<serial>
+make android_push DEVICE=<serial>     # 可省略 DEVICE=…（仅一台设备时自动选择）
+make android_run  DEVICE=<serial>
 ```
 
 `run` 在设备上执行 e2e：默认**外网 HTTPS 场景**（example.com / httpbin.org，设备使用自身网络直连，无需与宿主同网段），实时回传输出并以设备端退出码结束。
@@ -72,15 +72,15 @@ auto client = cpp_network::http::Client::Create(opts);   // 无任何 #ifdef
 
 | 现象 | 处理 |
 |------|------|
-| `make push` 报未连接/未授权 | `adb devices` 核对状态；手机端允许 USB 调试 |
+| `make android_push` 报未连接/未授权 | `adb devices` 核对状态；手机端允许 USB 调试 |
 | 多台设备报候选列表 | 加 `DEVICE=<serial>` 重试 |
 | run 报端口占用 | 不适用（外网模式无端口转发）；检查设备网络连通性 |
 | run 报证书/连接错误 | `NETLIB_TEST_EXT_BASE=https://<可达地址>` 定向排查 |
-| 构建期找不到 NDK | 确认 `ANDROID_NDK_HOME` 指向 r26+ 后重试 |
+| 构建期找不到 NDK | 确认 `ANDROID_NDK_HOME` 指向 r25+ 后重试 |
 
 ## 清理
 
 ```bash
-make clean-device [DEVICE=<serial>]   # 移除设备端 /data/local/tmp/cpp_network/
+make android_clean_device [DEVICE=<serial>]   # 移除设备端 /data/local/tmp/cpp_network/
 bazel clean                           # 本机构建缓存（源码归档与 configure/make 产物经外置 repository/disk cache 自动恢复）
 ```

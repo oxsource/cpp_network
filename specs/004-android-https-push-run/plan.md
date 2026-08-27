@@ -10,7 +10,7 @@
 
 ## Technical Context
 
-**Language/Version**: C++17；构建系统 Bazel 6.5.0（workspace 主导，rules_foreign_cc 承载第三方 configure/make 项目）；NDK r26+（android_ndk_repository 接入）
+**Language/Version**: C++17；构建系统 Bazel 6.5.0（workspace 主导，rules_foreign_cc 承载第三方 configure/make 项目）；NDK r25+（android_ndk_repository 接入）
 
 **Primary Dependencies**: OpenSSL 3.0.13 LTS（`third_party/openssl` 已 pin，Android 分支源码交叉编译、静态链接）；libcurl 8.7.1（`third_party/libcurl` 已 pin，Android 分支以 `--with-openssl` 源码构建、协议裁剪为 HTTP/HTTPS）；ADB（宿主侧设备通道，非库依赖）
 

@@ -150,3 +150,9 @@ build:android_arm64 --incompatible_enable_cc_toolchain_resolution=true
 2. **修复路径**：`stage_system_ca_bundle` 在设备端将 `/system/etc/security/cacerts/*` 合并为单 bundle 注入（FR-003 文档化模式，不改动库语义）。注意 cat 重定向发生在设备 shell 内部。
 3. **`make verify-android` 一键闭环**：build-android → push → RUN_MODE=local(S1–S7 经 reverse) → external(E1–E3) 顺序执行，实测输出：`PASS 7/7` + `PASS 3/3`、整体退出码 0；期间发现并修复 stage 函数未接线的遗漏。
 4. 实施中三次修正同一类问题（本地 vs 注入语义）：资产根目录统一为 helper 内拼 certs/ 的 TestAssetRoot 约定。
+
+## D12 修订（Phase 7 后）：NDK 下限由 r26 放宽至 r25
+
+r26+ 初始门槛源于文档基线假设，并非技术约束：构建链仅依赖统一布局下的交叉 clang/llvm-binutils 与 `-D__ANDROID_API__=24`（r19+ 均支持）。`tools/android_prereq.sh` 与 `platform_setup.sh` 的校验阈值调整为 **r25+**；发现逻辑不变（显式合法值优先，否则选最新可用版本）。已用本机 25.2.9519653 显式固定完成全链真机复验（见下节实测），28.x 仍为自动发现的默认选择。
+
+**实测（2026-08-27，NDK 25.2.9519653 显式固定 + 真机 be11）**：`android_build` 42s（OpenSSL/curl 重编译），真机 `android_verify` 两段全绿：S1–S7 `PASS 7/7`、E1–E3 `PASS 3/3`、退出码 0。r25 与 r28 双工具链均验证可用，下限调整有效。
