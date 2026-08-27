@@ -3,6 +3,17 @@
 **Branch**: `003-http-implementation` | **Date**: 2026-08-26
 **取代**: `001-cpp-network-library` 阶段的 `TlsConfig` 设计稿
 
+## 版本升级日志（审计锚点，specs/005 FR-002/FR-004）
+
+| 字段 | 值 |
+|------|----|
+| 当前版本 | OpenSSL 3.0.13 + curl 8.7.1（全平台统一源码构建，pin 见 `cpp_network_deps.bzl`） |
+| 上一版本 | 无（2026-08-27 完成统一接入的首次基线） |
+| 变更日期 | 2026-08-27 |
+
+> 变更规则：版本变更 **只允许** 发生在 `cpp_network_deps.bzl`；升级后执行
+> `make verify` 与 `make android_build` 完成最小回归演练（步骤见 specs/005 quickstart）。
+
 **对应需求**: FR-008（HTTPS + 证书配置）、FR-016/FR-013（不暴露 libcurl/OpenSSL 类型）
 
 **相关设计**: [tls-backend-selection.md](tls-backend-selection.md)、[tls-cert-validation.md](tls-cert-validation.md)、[http-config-mapping.md](http-config-mapping.md)
@@ -73,17 +84,21 @@ class Tls {
 
 ### Blob 运行时回退（Tls::CachedPemPath）
 
+> **specs/005 状态更新（2026-08-27）**：全平台统一源码构建后，锁定的 curl 8.7.1 在所有平台上 `*_BLOB` 运行时均原生可用——实测内存注入后临时文件兜底计数为 **0**（specs/005 evidence/macos-arm64-runtime.md）。以下回退机制保留为历史兼容路径（未来若引入旧版传输层才可能触发）。
+
 部分系统 libcurl（如 macOS 系统库）在头文件中声明了 `*_BLOB` 选项，但运行时对未支持的选项返回 `CURLE_FAILED_INIT`。内联 PEM 的判定（`Tls::IsPemText`）与缓存落地（`Tls::CachedPemPath`，get-or-create 返回稳定文件路径）均由 `Tls` 静态方法提供，映射层采用"先 blob、后缓存文件"的两级策略：文件按 PEM 内容缓存（进程生命周期内有效，保证路径跨传输可用），当前实现写入 `$TMPDIR/cpp_network_pem_XXXXXX`；落盘位置属实现细节，后续可能调整（如改用内存盘或专用缓存目录），调用方不得假设。
 
 ## 平台差异收敛
 
-| 平台 | 默认 CA 行为 | 说明 |
-|------|--------------|------|
-| macOS | 系统信任库（libcurl 默认） | 无需额外配置；blob 选项需回退（见上） |
-| Linux | 系统信任库（`/etc/ssl/certs` 等） | 无需额外配置 |
-| Android | 需显式 CA（系统信任库对 libcurl 不可直接消费：目录带元数据头且无 c_hash 命名） | **已落地（specs/004，2026-08-27）**：源码交叉编译 OpenSSL 3.0.13 + curl 8.7.1 静态链接；信任锚=使用者经 `Tls::Builder` 注入（文件/内存双形态），行为与桌面平台一致 |
+**specs/005 修订（2026-08-27）：全平台统一源码构建后，后端与信任锚语义完全一致。** 差异仅剩"系统锚文件的位置"这一应用侧事实：
 
-> Android 落地细节与验证证据见 `specs/004-android-https-push-run/`（research.md D1–D4、device-test-contract.md）。
+| 平台 | 后端 | 系统锚来源（应用注入建议） | 验证等级 |
+|------|------|---------------------------|----------|
+| macOS | 源码构建 OpenSSL+curl（静态） | `/etc/ssl/cert.pem` | runtime-verified |
+| Linux | 同上 | `/etc/ssl/certs/ca-certificates.crt` | build-only（executor pending） |
+| Android | 同上 | 无 libcurl 可消费形态——合并 `/system/etc/security/cacerts/*` 为 bundle（工具链已自动化） | runtime-verified |
+
+> BLOB 怪癖与平台特例分支随之消失；"默认拒自签 / 注入通过"在所有平台逐项一致（specs/005 US1 取证）。
 
 ## 默认值策略
 

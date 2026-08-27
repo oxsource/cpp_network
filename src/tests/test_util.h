@@ -47,6 +47,21 @@ inline std::string MtlsBase() {
              : std::string("https://127.0.0.1:18444");
 }
 
+// System trust-anchor bundle for verified-peer requests that don't inject a
+// custom anchor. Host binaries derive it from the OS store file matching the
+// running platform; Android runs receive it through
+// NETLIB_TEST_EXT_CA_BUNDLE (merged from /system/etc/security/cacerts).
+// Override anything via the environment.
+inline std::string ExtCaBundle() {
+  const char* v = std::getenv("NETLIB_TEST_EXT_CA_BUNDLE");
+  if (v != nullptr && *v != '\0') return std::string(v);
+#if defined(__APPLE__)
+  return std::string("/etc/ssl/cert.pem");
+#else
+  return std::string("/etc/ssl/certs/ca-certificates.crt");
+#endif
+}
+
 }  // namespace http
 }  // namespace cpp_network
 

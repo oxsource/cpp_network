@@ -16,6 +16,16 @@ using cpp_network::http::VerifyMode;
 
 namespace {
 
+// Platform trust anchor for verified-peer requests (FR-003 pattern): every
+// demo section injects the OS store so verified behavior matches real apps.
+std::string SystemCaBundle() {
+#if defined(__APPLE__)
+  return "/etc/ssl/cert.pem";
+#else
+  return "/etc/ssl/certs/ca-certificates.crt";
+#endif
+}
+
 void PrintResponse(const Response& resp) {
   std::printf("  status: %d %s\n", resp.status(), resp.status_text().c_str());
   std::printf("  effective_url: %s\n", resp.effective_url().c_str());
@@ -35,6 +45,7 @@ void PrintResponse(const Response& resp) {
 void TestHttpsGetVerified() {
   std::printf("[1] HTTPS GET with default peer verification\n");
   Options options;
+  options.SetTls(Tls::Builder().SetCaFile(SystemCaBundle()).Build());
   options.SetConnectTimeout(std::chrono::milliseconds(10000));
   options.SetTotalTimeout(std::chrono::milliseconds(15000));
 
@@ -57,7 +68,8 @@ void TestHttpsGetVerified() {
 
 void TestHttpsGetRequestBuilder() {
   std::printf("[2] HTTPS GET via Request::Builder (headers + timeout)\n");
-  Result<Client> client = Client::Create(Options{});
+  Result<Client> client = Client::Create(Options{}.SetTls(
+      Tls::Builder().SetCaFile(SystemCaBundle()).Build()));
   if (!client.ok()) {
     std::printf("  client create failed: %s\n",
                 client.error().message().c_str());
@@ -90,7 +102,8 @@ void TestHttpsGetRequestBuilder() {
 
 void TestHttpsPostJson() {
   std::printf("[3] HTTPS POST with JSON body\n");
-  Result<Client> client = Client::Create(Options{});
+  Result<Client> client = Client::Create(Options{}.SetTls(
+      Tls::Builder().SetCaFile(SystemCaBundle()).Build()));
   if (!client.ok()) {
     std::printf("  client create failed: %s\n",
                 client.error().message().c_str());

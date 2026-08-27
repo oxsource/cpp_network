@@ -15,6 +15,7 @@ help:
 	@echo "                              RUN_MODE=local: host fixtures + adb reverse)"
 	@echo "  make android_clean_device [DEVICE=serial]"
 	@echo "  make android_verify [DEVICE=serial] - one-click cert check"
+	@echo "  make deps_audit   - assert no system-libcurl refs (FR-003)"
 	@echo "      (build+push+local S1-S7+external E1-E3)"
 	@echo "  make menu      - interactive menu"
 	@echo "  make modules   - list registered modules"

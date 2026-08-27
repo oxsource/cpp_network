@@ -36,5 +36,9 @@ build:android_arm64 --platforms=//platforms:android_arm64
 # Requires ANDROID_NDK_HOME pointing at NDK r26+; see tools/platform_setup.sh.
 build:android_arm64 --extra_toolchains=@androidndk//:all
 build:android_arm64 --incompatible_enable_cc_toolchain_resolution=true
-# Pass the client NDK root into cross-build actions (third_party/androidtls).
+# Pass the client NDK root into cross-build actions (third_party/tls/android).
 build:android_arm64 --action_env=ANDROID_NDK_HOME
+
+# macos_x86_64 config requests real x86_64 third-party objects via an -arch
+# cross compile on any macOS machine (specs/005 US3 build-level verification).
+build:macos_x86_64 --action_env=TLS_HOST_ARCH=x86_64

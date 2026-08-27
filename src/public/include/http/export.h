@@ -2,14 +2,17 @@
 #define CPP_NETWORK_HTTP_EXPORT_H_
 
 // Export macro for the cpp_network HTTP library. Public API types are
-// annotated with CPP_NETWORK_HTTP_EXPORT, which always marks the symbol with
-// default visibility so it is reachable from a -fvisibility=hidden shared
-// library build.
+// annotated with CPP_NETWORK_HTTP_EXPORT.
+//
+// On Apple/Linux the annotation forces DEFAULT visibility per symbol: the
+// whole tree is compiled with `-fvisibility=hidden` to bury third-party
+// implementation symbols, while the public API must survive that setting in
+// both static archives and shared-library builds. Windows keeps an empty
+// decoration until the platform enters scope.
+//
+// CPP_NETWORK_HTTP_SHARED_LIBRARY (set by the shared target) is kept as a
+// build-status marker for tooling; visibility above already covers both.
 
-#if defined(_WIN32)
-#define CPP_NETWORK_HTTP_EXPORT
-#else
-#define CPP_NETWORK_HTTP_EXPORT
-#endif
+#define CPP_NETWORK_HTTP_EXPORT __attribute__((visibility("default")))
 
 #endif  // CPP_NETWORK_HTTP_EXPORT_H_

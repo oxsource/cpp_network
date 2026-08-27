@@ -92,18 +92,21 @@ cc_library(
 
 ## 验证矩阵（构建期 gate）
 
-| 平台 | SSL 后端 | 验证命令 |
-|------|----------|----------|
-| macOS arm64 | OpenSSL | `bazel build --config=macos_arm64 //src/tls:tls` |
-| Linux x86_64 | OpenSSL | `bazel build --config=linux_x86_64 //src/tls:tls` |
-| Android arm64 | OpenSSL | `bazel build --config=android_arm64 //src/tls:tls` |
+| 平台 | SSL 后端 | 验证等级 | 验证命令 |
+|------|----------|----------|----------|
+| macOS arm64 | OpenSSL（源码构建） | **runtime-verified**（specs/005 全量取证） | `bazel build --config=macos_arm64 //src/tests:device_e2e` |
+| Linux x86_64 | OpenSSL（源码构建） | analysis-only · executor pending | `bazel build --config=linux_x86_64 --nobuild //src/public:cpp_network ...` rc=0 |
+| Linux aarch64 | OpenSSL（源码构建） | analysis-only · executor pending | 同上，rc=0 |
+| Android arm64 | OpenSSL（源码构建） | **runtime-verified**（specs/004 真机 + 005 回归） | `make android_verify DEVICE=<serial>` |
 
-构建通过即证明 OpenSSL 后端依赖解析正确。
+构建通过即证明 OpenSSL 后端依赖解析正确；运行级判定以 specs/005 evidence/ 下各平台取证文件为准。
 
 ## 边界与约束
 
 - 不做运行时后端切换（全平台固定 OpenSSL）。
 - 不暴露 OpenSSL 头文件到公共 API。
+- 自定义 CA 的内存注入统一走运行时内存通道（pin 版本原生支持）；历史临时文件兜底保留为兼容路径。
+- Linux 宿主需有对应执行机方可补齐编译级/运行级证据（specs/005 US3 D4）。
 - 自定义 CA 的内存注入依赖 curl ≥7.77（`CURLOPT_CAINFO_BLOB`）；若降版本，回退临时文件方案。
 - Android 上需确认 OpenSSL 3.x 的可交叉编译性（NDK 工具链），见 host-openssl-build.md 的扩展说明。
 

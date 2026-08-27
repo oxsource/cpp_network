@@ -58,3 +58,16 @@ android_verify: android_build android_push
 	@echo "[android] certificate verification: external internet scenarios..."
 	bash tools/android_device.sh run
 	@echo "[android] android_verify OK"
+
+# Static assertion: the build graph must contain no system-libcurl link path
+# (specs/005 FR-003). Fails with offending file list when violated.
+.PHONY: deps_audit
+MK_TARGETS += deps_audit
+deps_audit:
+	@echo "[audit] scanning for system-libcurl references..."
+	@if grep -rn --include='BUILD*' --include='*.bzl' '\-lcurl' \
+	     src third_party platforms BUILD.bazel WORKSPACE cpp_network_deps.bzl \
+	     2>/dev/null; then \
+	  echo "ERROR: system-libcurl references found (FR-003 violation)" >&2; exit 1; \
+	fi
+	@echo "[audit] OK: no -lcurl references in the Bazel graph"

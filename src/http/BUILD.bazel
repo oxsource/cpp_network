@@ -67,20 +67,21 @@ cc_library(
     ],
 )
 
-# Host configs link the system libcurl; the android_arm64 config links the
-# source-built OpenSSL+libcurl static bundle (third_party/androidtls).
-_TLS_LINKOPTS = select({
-    "//platforms:android_arm64_setting": [],
-    "//conditions:default": ["-lcurl"],
-})
-
+# Every platform links the same source-built OpenSSL+libcurl bundle
+# (specs/005): the select only routes to the matching builder package.
+# There is no system-libcurl fallback left in the graph (FR-003).
 _TLS_DEPS = select({
-    "//platforms:android_arm64_setting": ["//third_party/androidtls:android_curl"],
+    "//platforms:android_arm64_setting": ["//third_party/tls/android:curl"],
+    "//platforms:macos_arm64_setting": ["//third_party/tls/host:curl"],
+    "//platforms:macos_x86_64_setting": ["//third_party/tls/host:curl"],
+    "//platforms:linux_x86_64_setting": ["//third_party/tls/host:curl"],
+    "//platforms:linux_aarch64_setting": ["//third_party/tls/host:curl"],
     "//conditions:default": [],
 })
 
 cc_library(
     name = "engine",
+    alwayslink = 1,
     srcs = ["engine.cc", "detail/curl_mapping.cc"],
     hdrs = ["engine.h", "detail/curl_mapping.h", "detail/http_constants.h"],
     deps = [
@@ -93,11 +94,11 @@ cc_library(
         ":result",
         "//src/tls:tls",
     ] + _TLS_DEPS,
-    linkopts = _TLS_LINKOPTS,
 )
 
 cc_library(
     name = "client",
+    alwayslink = 1,
     srcs = ["client.cc"],
     deps = [
         PUBLIC_HEADERS,
@@ -110,5 +111,4 @@ cc_library(
         ":result",
         "//src/tls:tls",
     ] + _TLS_DEPS,
-    linkopts = _TLS_LINKOPTS,
 )

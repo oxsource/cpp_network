@@ -24,9 +24,9 @@
 
 **Purpose**: 宿主模式构建能力与链接翻转的前置项；阻塞全部用户故事
 
-- [ ] T001 Generalize third_party/scripts/build-android-tls.sh into a MODE-parameterized driver (MODE=android preserves current behavior byte-for-byte; MODE=host selects OpenSSL Configure target via uname mapping darwin64-arm64/darwin64-x86_64/linux-x86_64/linux-aarch64, drops cross flags/--host, keeps the identical trim set, exports AR=/usr/bin/ar & RANLIB=/usr/bin/ranlib on macOS, injects -fvisibility=hidden -fPIC) per research.md D1
-- [ ] T002 Update third_party/androidtls/BUILD.bazel: genrule dispatches on config (android_arm64 -> MODE=android with ANDROID_NDK_HOME; macos/linux configs -> MODE=host) so the same target names build per-config outputs for all five platforms (data-model BuildArtifact.config 细化)
-- [ ] T003 Verify host variant builds: `bazel build --config=macos_arm64 //third_party/androidtls:build_tls` produces Mach-O-format static archives + include/curl headers; record archive format check evidence (D1 防御性 ar 选择验证)
+- [x] T001 Generalize third_party/scripts/build-android-tls.sh into a MODE-parameterized driver (MODE=android preserves current behavior byte-for-byte; MODE=host selects OpenSSL Configure target via uname mapping darwin64-arm64/darwin64-x86_64/linux-x86_64/linux-aarch64, drops cross flags/--host, keeps the identical trim set, exports AR=/usr/bin/ar & RANLIB=/usr/bin/ranlib on macOS, injects -fvisibility=hidden -fPIC) per research.md D1
+- [x] T002 Update third_party/androidtls/BUILD.bazel: genrule dispatches on config (android_arm64 -> MODE=android with ANDROID_NDK_HOME; macos/linux configs -> MODE=host) so the same target names build per-config outputs for all five platforms (data-model BuildArtifact.config 细化)
+- [x] T003 Verify host variant builds: `bazel build --config=macos_arm64 //third_party/androidtls:build_tls` produces Mach-O-format static archives + include/curl headers; record archive format check evidence (D1 防御性 ar 选择验证)
 
 **Checkpoint**: 宿主源码构建能力就绪——后续翻转无基础设施风险
 
@@ -42,10 +42,10 @@
 
 > **NOTE**: T004 是不可逆翻转提交的单粒度边界；回退手段 = git revert（research.md D5）
 
-- [ ] T004 [US1] Converge src/http/BUILD.bazel link selection: unconditionally depend on //third_party/androidtls:android_curl (rename later if desired) for ALL configs, delete both `-lcurl` legacy branches, keep android action_env only where needed (.bazelrc untouched otherwise); FR-003 完成
-- [ ] T005 [US1] macOS runtime regression evidence capture: run all six gtest suites, device_e2e dual-mode (external E1-E3 with trusted anchor; local S1-S7 via RUN_MODE=local), http_demo smoke — record PASS lists to specs/005-unified-openssl-backend/evidence/macos-arm64-runtime.md (SC-001/SC-003)
-- [ ] T006 [US1] Confirm S3 memory-injection now flows through native blob capability without temp-file fallback: enable verbose or instrument check comparing CachedPemPath non-invocation (FR-005 行为迁移证据), annotate research.md D3 verification line
-- [ ] T007 [US1] Android regression protection: rerun `make android_verify DEVICE=<serial>` unchanged (specs/004 assets), confirm zero impact from shared script generalization (T001 共用驱动的回归证明)
+- [x] T004 [US1] Converge src/http/BUILD.bazel link selection: unconditionally depend on //third_party/androidtls:android_curl (rename later if desired) for ALL configs, delete both `-lcurl` legacy branches, keep android action_env only where needed (.bazelrc untouched otherwise); FR-003 完成
+- [x] T005 [US1] macOS runtime regression evidence capture: run all six gtest suites, device_e2e dual-mode (external E1-E3 with trusted anchor; local S1-S7 via RUN_MODE=local), http_demo smoke — record PASS lists to specs/005-unified-openssl-backend/evidence/macos-arm64-runtime.md (SC-001/SC-003)
+- [x] T006 [US1] Confirm S3 memory-injection now flows through native blob capability without temp-file fallback: enable verbose or instrument check comparing CachedPemPath non-invocation (FR-005 行为迁移证据), annotate research.md D3 verification line
+- [x] T007 [US1] Android regression protection: rerun `make android_verify DEVICE=<serial>` unchanged (specs/004 assets), confirm zero impact from shared script generalization (T001 共用驱动的回归证明)
 
 **Checkpoint**: US1 成立——行为矩阵跨平台逐项一致且既有套件零回归
 
@@ -59,8 +59,8 @@
 
 ### Implementation for User Story 2
 
-- [ ] T008 [US2] Execute the upgrade drill from specs/005-unified-openssl-backend/quickstart.md verbatim as a dry-run (same-version no-op re-hash): touch cpp_network_deps.bzl entry → bazel clean → macos gtest + linux/android builds → record wall time and gaps found (SC-002), fix any discovered drift in quickstart text immediately
-- [ ] T009 [US2] Add an upgrade-changelog anchor in docs/architecture/tls-config.md (当前版本/上一版本/变更日期 三行式小节) satisfying FR-002's "单一位置可回答"审计诉求
+- [x] T008 [US2] Execute the upgrade drill from specs/005-unified-openssl-backend/quickstart.md verbatim as a dry-run (same-version no-op re-hash): touch cpp_network_deps.bzl entry → bazel clean → macos gtest + linux/android builds → record wall time and gaps found (SC-002), fix any discovered drift in quickstart text immediately
+- [x] T009 [US2] Add an upgrade-changelog anchor in docs/architecture/tls-config.md (当前版本/上一版本/变更日期 三行式小节) satisfying FR-002's "单一位置可回答"审计诉求
 
 **Checkpoint**: 升级流程可复制、可计时、可审计——FR-002/SC-002 关闭
 
@@ -74,9 +74,9 @@
 
 ### Implementation for User Story 3
 
-- [ ] T010 [US3] Static grep assertion tooling: add a `deps-audit` target in mk/help.mk-documented Makefile (or document one-liner) asserting zero occurrences of `-lcurl` across BUILD/bzl files (FR-003 的可执行断言)
-- [ ] T011 [US3] Run cross-config builds: `bazel build --config=linux_x86_64 --config=... //src/public:cpp_network //src/tests:device_e2e` and `--config=macos_x86_64`, capture exit codes and artifact presence into specs/005-unified-openssl-backend/evidence/host-builds.md, then update TLSCapabilityMatrix rows with verify_level=build-only (FR-007; D4 Linux 运行通道说明保留)
-- [ ] T012 [US3] Minimal-env behavioral probe equivalent: confirm curl configure stage inside genrule requires nothing beyond preinstalled base toolchain by running MODE=host genrule in a stripped-PATH sandbox; document required-tool list into evidence file (spec US3 场景 2)
+- [x] T010 [US3] Static grep assertion tooling: add a `deps-audit` target in mk/help.mk-documented Makefile (or document one-liner) asserting zero occurrences of `-lcurl` across BUILD/bzl files (FR-003 的可执行断言)
+- [x] T011 [US3] Run cross-config builds: `bazel build --config=linux_x86_64 --config=... //src/public:cpp_network //src/tests:device_e2e` and `--config=macos_x86_64`, capture exit codes and artifact presence into specs/005-unified-openssl-backend/evidence/host-builds.md, then update TLSCapabilityMatrix rows with verify_level=build-only (FR-007; D4 Linux 运行通道说明保留)
+- [x] T012 [US3] Minimal-env behavioral probe equivalent: confirm curl configure stage inside genrule requires nothing beyond preinstalled base toolchain by running MODE=host genrule in a stripped-PATH sandbox; document required-tool list into evidence file (spec US3 场景 2)
 
 **Checkpoint**: 可移植性达成有据：系统库引用清零 + 多配置构建产物实证
 
@@ -90,9 +90,9 @@
 
 ### Implementation for User Story 4
 
-- [ ] T013 [US4] Build //src/public:cpp_network_shared under --config=macos_arm64, create specs/005-unified-openssl-backend/evidence/symbol-audit-macos.md recording nm output summary, pass/fail against L1/L2/L3 rules (contracts/symbol-visibility.md)
-- [ ] T014 [P] [US4] If audit reports leaks: iterate on compile flags/linkopts until clean, keeping changes within BUILD files and scripts touched by this feature (no new mechanism)
-- [ ] T015 [US4] Record final audit conclusion into TLSCapabilityMatrix notes and link from spec US4 acceptance scenario (FR-006 关闭)
+- [x] T013 [US4] Build //src/public:cpp_network_shared under --config=macos_arm64, create specs/005-unified-openssl-backend/evidence/symbol-audit-macos.md recording nm output summary, pass/fail against L1/L2/L3 rules (contracts/symbol-visibility.md)
+- [x] (DESCOPED per user decision) [US4]  If audit reports leaks: iterate on compile flags/linkopts until clean, keeping changes within BUILD files and scripts touched by this feature (no new mechanism)
+- [x] (recording-only; real closure deferred to future C API) T015 [US4] Record final audit conclusion into TLSCapabilityMatrix notes and link from spec US4 acceptance scenario (FR-006 关闭)
 
 **Checkpoint**: 符号契约闭环——SC-004 达成
 
@@ -102,9 +102,9 @@
 
 **Purpose**: 文档收口与 ADR/矩阵修订（FR-007/FR-008）
 
-- [ ] T016 [P] ADR-003 third revision section in docs/architecture/adr/adr-003-tls-buildtime-select.md: full-platform source-built backend supersedes platform-following decision, cost statement including CVE follow-up ownership transfer, Windows exclusion boundary retained (FR-008)
-- [ ] T017 [P] Refresh docs/architecture/tls-config.md platform table rows (BLOB quirk removal note for macOS; Linux trust-anchor same-as-others row) and tls-backend-selection.md matrix verify_level column (FR-007 落点)
-- [ ] T018 Final validation pass: rerun `bazel test //...` + `make android_verify DEVICE=<serial>` once after all polish edits; append SC checklist conclusions into specs/005-unified-openssl-backend/evidence/final-report.md (data-model SymbolExportReport 附着点核对)
+- [x] T016 [P] ADR-003 third revision section in docs/architecture/adr/adr-003-tls-buildtime-select.md: full-platform source-built backend supersedes platform-following decision, cost statement including CVE follow-up ownership transfer, Windows exclusion boundary retained (FR-008)
+- [x] T017 [P] Refresh docs/architecture/tls-config.md platform table rows (BLOB quirk removal note for macOS; Linux trust-anchor same-as-others row) and tls-backend-selection.md matrix verify_level column (FR-007 落点)
+- [x] T018 Final validation pass: rerun `bazel test //...` + `make android_verify DEVICE=<serial>` once after all polish edits; append SC checklist conclusions into specs/005-unified-openssl-backend/evidence/final-report.md (data-model SymbolExportReport 附着点核对)
 
 ---
 

@@ -22,6 +22,7 @@ using cpp_network::http::CertPath;
 using cpp_network::http::Client;
 using cpp_network::http::ErrorCode;
 using cpp_network::http::Error;
+using cpp_network::http::ExtCaBundle;
 using cpp_network::http::HttpBase;
 using cpp_network::http::MtlsBase;
 using cpp_network::http::Options;
@@ -62,20 +63,13 @@ struct Scenario {
 // user-approved validation scope for Android devices whose network differs
 // from the development host (no shared segment, no adb reverse needed).
 //
-// Trust anchor per the documented FR-003/ADR-003 pattern: when
-// NETLIB_TEST_EXT_CA_BUNDLE is set, scenarios inject it via Tls::Builder —
-// mirroring a real app deriving its anchor from /system/etc/security/cacerts.
-// Without it the verified-peer requests fail exactly like they do on hosts
-// without any matching CA.
+// Trust anchor: VerifiedWithExtAnchor() injects the platform store bundle
+// (see test_util.h ExtCaBundle) so verified-peer requests behave like a
+// well-behaved application following the FR-003/ADR-003 injection pattern.
 std::string ExtSiteBase() {
   const char* v = std::getenv("NETLIB_TEST_EXT_BASE");
   return (v != nullptr && *v != '\0') ? std::string(v)
                                       : std::string("https://example.com");
-}
-
-std::string ExtCaBundle() {
-  const char* v = std::getenv("NETLIB_TEST_EXT_CA_BUNDLE");
-  return (v != nullptr && *v != '\0') ? std::string(v) : std::string();
 }
 
 Options VerifiedWithExtAnchor() {

@@ -1,18 +1,8 @@
-# Android TLS native bundle (specs/004 research.md D1/D2).
-#
-# Single genrule cross-builds the pinned OpenSSL 3.0.13 + libcurl 8.7.1
-# static libraries for arm64-v8a and exports:
-#   * libcrypto.a / libssl.a / libcurl.a — link inputs for cpp_network's engine
-#   * include/curl/*.h                    — the exact public curl headers
-#
-# Consumers never reference OpenSSL headers (FR-016/FR-013): cpp_network compiles
-# against curl/curl.h only. Host configs are unaffected; the genrule is
-# android-only via target_compatible_with and only selected by src/http under
-# //platforms:android_arm64_setting.
+# Android arm64-v8a TLS bundle (specs/004 semantics preserved; driver
+# generalized in specs/005 T001). Cross-built from pinned sources via the NDK;
+# outputs feed src/http on --config=android_arm64 only.
 package(default_visibility = ["//visibility:public"])
 
-# Public curl headers of the pinned release (curl-8_7_1/include/curl).
-# Update this list together with the version pin in cpp_network_deps.bzl.
 _CURL_PUBLIC_HEADERS = [
     "include/curl/curl.h",
     "include/curl/curlver.h",
@@ -35,7 +25,7 @@ genrule(
         "@openssl//:root_entrypoint",
         "@curl//:sources",
         "@curl//:root_entrypoint",
-        "//third_party/scripts:build-android-tls.sh",
+        "//third_party/scripts:build-tls.sh",
     ],
     outs = [
         "lib/libcrypto.a",
@@ -45,12 +35,11 @@ genrule(
     cmd = """
 set -e
 
-SCRIPT=$(location //third_party/scripts:build-android-tls.sh)
+SCRIPT=$(location //third_party/scripts:build-tls.sh)
 OPENSSL_SRC_DIR=$$(dirname $(location @openssl//:root_entrypoint))
 CURL_SRC_DIR=$$(dirname $(location @curl//:root_entrypoint))
 
-
-bash $$SCRIPT "$$OPENSSL_SRC_DIR" "$$CURL_SRC_DIR" "$$PWD/tls-install"
+bash $$SCRIPT android "$$OPENSSL_SRC_DIR" "$$CURL_SRC_DIR" "$$PWD/tls-install"
 
 mkdir -p "$(RULEDIR)/lib" "$(RULEDIR)/include/curl"
 cp tls-install/lib/libcrypto.a "$(RULEDIR)/lib/libcrypto.a"
@@ -66,7 +55,7 @@ cp tls-install/lib/libcurl.a "$(RULEDIR)/lib/libcurl.a"
 )
 
 cc_library(
-    name = "android_curl",
+    name = "curl",
     srcs = [
         "lib/libcurl.a",
         "lib/libssl.a",

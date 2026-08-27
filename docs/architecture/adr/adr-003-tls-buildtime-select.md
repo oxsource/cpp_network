@@ -52,3 +52,19 @@ TLS 由 libcurl 的 SSL 后端承担，**后端跟随平台惯例，不做统一
 1. 系统/Java 层 TLS 为 Conscrypt（Java Provider，底层 BoringSSL），仅面向 JVM 调用方；libcurl 无 Conscrypt 后端，C++ 进程不可调用。
 2. NDK 自 r18 起移除 libssl/libcrypto；应用进程受 linker namespace 限制只能链接 `/system/etc/public.libraries.txt` 白名单内系统库——TLS 库不在其中。
 3. 结论：任何 C++ 方案必须源码自建一个 TLS 后端。曾评估 BoringSSL（Android 同源栈、无需 LTS commit 锁定复杂度低），但因快速演进无 LTS 与已知校验语义差异面，最终维持 **OpenSSL 3.0.13 LTS** 源码交叉编译（与 Linux 主机同语义栈）。工具链接入经 rules_android_ndk v0.1.2（懒取仓，宿主构建不触碰 NDK）。
+
+## 第三次修订（specs/005，2026-08-27）：全平台源码构建统一 OpenSSL
+
+**Decision**: 本决策全面取代"后端跟随平台"：包括 macOS/Linux 在内的所有受支持平台一律改为与 Android 相同的 **源码构建 OpenSSL 3.0.13 + curl 8.7.1 静态链接**；系统 libcurl 链接路径从构建图中物理移除（specs/005 research.md D5，回退手段为单次 git revert）。
+
+**动机（收益）**:
+- 跨平台行为逐项一致（specs/005 US1 已取证）：证书校验语义、内存注入通道、符号行为不再随发行版/用户机器漂移
+- macOS 系统 curl 的 BLOB 运行时怪癖随之消失（specs/004 被迫引入的 CachedPemPath 兜底转历史兼容定位）
+- 可重现性提升：不再依赖系统 libcurl 的版本/编译选项差异
+
+**成本声明（本项目承接的安全运营责任）**:
+- OpenSSL/curl 的 CVE 公告跟进从"操作系统负责"转移为本项目负责；升级演练已固化为 specs/005 quickstart 步骤并实测 ≈2 分钟全平台回归
+- 构建面扩大：每新增宿主配置一次冷构建 ≈40s（外置缓存策略就绪）
+
+**验证等级边界**: Linux 两配置按 analysis-only 级别交付（需对应执行机补齐），矩阵如实标注；Windows 维持排除于 v1 外。
+

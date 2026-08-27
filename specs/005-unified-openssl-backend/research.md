@@ -53,3 +53,5 @@
 **Rationale**: 保留双分支等于永久背负两套行为语义，与"统一后端"初衷冲突；pre-flip 取证把回退概率压到最低。
 
 **Alternatives considered**: opt-in 配置渐进式。用户已明确选择直接切换。Superseded by user decision。
+
+**D3 验证补记（Phase 2 实测）**：S3 内存注入在全平台统一 bundle 上确认**零临时文件**产生（运行前后 `/tmp/cpp_network_pem_*` 计数均为 0），Blob 直达通道生效；CachedPemPath 兜底保留但不再被任何受支持平台触发（历史兼容定位成立）。
