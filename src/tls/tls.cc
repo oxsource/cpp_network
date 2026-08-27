@@ -38,7 +38,7 @@ Result<void> Tls::Validate() const {
     return Invalid("ca_file and ca_certificate are mutually exclusive");
   }
   if (ca_pem_.has_value()) {
-    if (!Tls::IsInlinePem(*ca_pem_) || !HasMatchingEnd(*ca_pem_)) {
+    if (!Tls::IsPemText(*ca_pem_) || !HasMatchingEnd(*ca_pem_)) {
       return Invalid("ca_certificate does not look like valid PEM");
     }
   } else if (ca_file_.has_value() && ca_file_->empty()) {
@@ -49,8 +49,8 @@ Result<void> Tls::Validate() const {
         "client certificate and key must be configured together (mTLS)");
   }
   if (client_cert_.has_value()) {
-    const bool cert_is_pem = Tls::IsInlinePem(*client_cert_);
-    const bool key_is_pem = Tls::IsInlinePem(*client_key_);
+    const bool cert_is_pem = Tls::IsPemText(*client_cert_);
+    const bool key_is_pem = Tls::IsPemText(*client_key_);
     if (client_cert_->empty() || client_key_->empty()) {
       return Invalid("client certificate/key must not be empty");
     }
@@ -76,12 +76,12 @@ Result<void> Tls::Validate() const {
 }
 
 // static
-bool Tls::IsInlinePem(const std::string& value) {
+bool Tls::IsPemText(const std::string& value) {
   return value.find(kBeginMarker) != std::string::npos;
 }
 
 // static
-const char* Tls::MaterializePem(const std::string& pem) {
+const char* Tls::CachedPemPath(const std::string& pem) {
   static std::mutex mutex;
   static std::map<std::string, std::string> cache;
   std::lock_guard<std::mutex> lock(mutex);

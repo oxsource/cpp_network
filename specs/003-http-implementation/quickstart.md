@@ -43,14 +43,18 @@ auto res = client->Send(req);
 ### 3. HTTPS + 证书配置
 
 ```cpp
-cpp_network::http::Tls tls;
-tls.SetCaFile("/path/to/custom_ca.pem");      // 内网 CA
-// 或注入自签证书：
-tls.SetCaCertificate("-----BEGIN CERTIFICATE-----\n...");
-// mTLS 客户端证书：
-tls.SetClientCertificate("/path/to/cert.pem", "/path/to/key.pem");
-// 跳过校验（仅测试）：
-tls.SetVerifyMode(cpp_network::http::VerifyMode::kSkipVerification);
+// 内网 CA：
+cpp_network::http::Tls tls =
+    cpp_network::http::Tls::Builder()
+        .SetCaFile("/path/to/custom_ca.pem")
+        .Build();
+// 或注入自签证书 / mTLS 客户端证书 / 跳过校验（仅测试）：
+cpp_network::http::Tls tls =
+    cpp_network::http::Tls::Builder()
+        .SetCaPem("-----BEGIN CERTIFICATE-----\n...")
+        .SetCertificate("/path/to/cert.pem", "/path/to/key.pem")
+        .SetVerifyMode(cpp_network::http::VerifyMode::kSkipVerification)
+        .Build();
 
 opts.SetTls(tls);
 ```

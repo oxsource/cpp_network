@@ -40,7 +40,7 @@
 ### 模式 C：自定义 CA（内部 CA/私有 PKI）
 
 ```text
-用户配置 Tls.SetCaFile(path) 或 SetCaCertificate(pem)
+用户配置 Tls.SetCaFile(path) 或 SetCaPem(pem)
   → 拼接 PEM bundle → CURLOPT_CAINFO（或 CAINFO_BLOB）
   → verify_mode 仍为 kVerifyPeer（默认）
   → 信任锚 = 用户 CA bundle（替代系统信任库，而非追加）
@@ -81,8 +81,8 @@
 | 自签证书 + 默认配置 | `kVerifyPeer` | `kCertificateVerificationFailed` 拒绝 | `SelfSignedRejectedByDefault` |
 | 自签证书 + skip | `SetVerifyMode(kSkipVerification)` | 握手成功 | `SelfSignedAcceptedWhenSkipVerification` |
 | 自签证书 + CA 文件注入 | `SetCaFile(...)` | 信任锚 = 该 CA，200 | `SelfSignedAcceptedWhenCaFileInjected` |
-| 自签证书 + 内存 CA PEM 注入 | `SetCaCertificate(pem)` | 同上 | `SelfSignedAcceptedWhenCaPemInjected` |
-| mTLS（文件路径） | `SetClientCertificate(path, path)` | 200 | `ClientCertificateRequiredForMtls` |
+| 自签证书 + 内存 CA PEM 注入 | `SetCaPem(pem)` | 同上 | `SelfSignedAcceptedWhenCaPemInjected` |
+| mTLS（文件路径） | `SetCertificate(path, path)` | 200 | `ClientCertificateRequiredForMtls` |
 | mTLS（内存 PEM） | blob → 临时文件回退 | 200 | `MtlsAcceptedWithInMemoryPem` |
 | 非法配置 | 非法 PEM / CA 冲突 / SNI CRLF / 形态混用 | `kInvalidArgument` 前置拒绝 | `TlsValidationTest.*` |
 

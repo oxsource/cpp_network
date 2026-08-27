@@ -103,9 +103,8 @@ TEST_F(HttpsTest, SelfSignedRejectedByDefault) {
 
 TEST_F(HttpsTest, SelfSignedAcceptedWhenSkipVerification) {
   Options opts = MakeOptions();
-  Tls tls;
-  tls.SetVerifyMode(VerifyMode::kSkipVerification);
-  opts.SetTls(tls);
+  opts.SetTls(Tls::Builder().SetVerifyMode(VerifyMode::kSkipVerification)
+                  .Build());
   auto client = Client::Create(opts);
   ASSERT_TRUE(client.ok()) << client.error().message();
   Result<Response> res = client->Get(kTlsBase + "/");
@@ -115,9 +114,7 @@ TEST_F(HttpsTest, SelfSignedAcceptedWhenSkipVerification) {
 
 TEST_F(HttpsTest, SelfSignedAcceptedWhenCaFileInjected) {
   Options opts = MakeOptions();
-  Tls tls;
-  tls.SetCaFile("src/tests/certs/ca_cert.pem");
-  opts.SetTls(tls);
+  opts.SetTls(Tls::Builder().SetCaFile("src/tests/certs/ca_cert.pem").Build());
   auto client = Client::Create(opts);
   ASSERT_TRUE(client.ok()) << client.error().message();
   Result<Response> res = client->Get(kTlsBase + "/");
@@ -129,9 +126,7 @@ TEST_F(HttpsTest, SelfSignedAcceptedWhenCaPemInjected) {
   std::string ca_pem;
   ASSERT_TRUE(ReadFile("src/tests/certs/ca_cert.pem", &ca_pem));
   Options opts = MakeOptions();
-  Tls tls;
-  tls.SetCaCertificate(ca_pem);
-  opts.SetTls(tls);
+  opts.SetTls(Tls::Builder().SetCaPem(ca_pem).Build());
   auto client = Client::Create(opts);
   ASSERT_TRUE(client.ok()) << client.error().message();
   Result<Response> res = client->Get(kTlsBase + "/");
@@ -141,11 +136,12 @@ TEST_F(HttpsTest, SelfSignedAcceptedWhenCaPemInjected) {
 
 TEST_F(HttpsTest, ClientCertificateRequiredForMtls) {
   Options opts = MakeOptions();
-  Tls tls;
-  tls.SetVerifyMode(VerifyMode::kSkipVerification);
-  tls.SetClientCertificate("src/tests/certs/client_cert.pem",
-                           "src/tests/certs/client_key.pem");
-  opts.SetTls(tls);
+  opts.SetTls(
+      Tls::Builder()
+          .SetVerifyMode(VerifyMode::kSkipVerification)
+          .SetCertificate("src/tests/certs/client_cert.pem",
+                                "src/tests/certs/client_key.pem")
+          .Build());
   auto client = Client::Create(opts);
   ASSERT_TRUE(client.ok()) << client.error().message();
   Result<Response> res = client->Get("https://127.0.0.1:18444/");
@@ -159,10 +155,10 @@ TEST_F(HttpsTest, MtlsAcceptedWithInMemoryPem) {
   ASSERT_TRUE(ReadFile("src/tests/certs/client_cert.pem", &cert_pem));
   ASSERT_TRUE(ReadFile("src/tests/certs/client_key.pem", &key_pem));
   Options opts = MakeOptions();
-  Tls tls;
-  tls.SetVerifyMode(VerifyMode::kSkipVerification);
-  tls.SetClientCertificate(cert_pem, key_pem);
-  opts.SetTls(tls);
+  opts.SetTls(Tls::Builder()
+                  .SetVerifyMode(VerifyMode::kSkipVerification)
+                  .SetCertificate(cert_pem, key_pem)
+                  .Build());
   auto client = Client::Create(opts);
   ASSERT_TRUE(client.ok()) << client.error().message();
   Result<Response> res = client->Get("https://127.0.0.1:18444/");
@@ -175,9 +171,7 @@ TEST_F(HttpsTest, MtlsAcceptedWithInMemoryPem) {
 
 TEST(TlsValidationTest, InvalidInlineCaPemRejected) {
   Options opts;
-  Tls tls;
-  tls.SetCaCertificate("this is not a pem");
-  opts.SetTls(tls);
+  opts.SetTls(Tls::Builder().SetCaPem("this is not a pem").Build());
   auto client = Client::Create(opts);
   ASSERT_FALSE(client.ok());
   EXPECT_EQ(ErrorCode::kInvalidArgument, client.error().code());
@@ -185,10 +179,11 @@ TEST(TlsValidationTest, InvalidInlineCaPemRejected) {
 
 TEST(TlsValidationTest, ConflictingCaSourcesRejected) {
   Options opts;
-  Tls tls;
-  tls.SetCaFile("src/tests/certs/ca_cert.pem");
-  tls.SetCaCertificate("-----BEGIN CERTIFICATE-----\n-----END CERTIFICATE-----");
-  opts.SetTls(tls);
+  opts.SetTls(Tls::Builder()
+                  .SetCaFile("src/tests/certs/ca_cert.pem")
+                  .SetCaPem("-----BEGIN CERTIFICATE-----\n"
+                            "-----END CERTIFICATE-----")
+                  .Build());
   auto client = Client::Create(opts);
   ASSERT_FALSE(client.ok());
   EXPECT_EQ(ErrorCode::kInvalidArgument, client.error().code());
@@ -196,9 +191,7 @@ TEST(TlsValidationTest, ConflictingCaSourcesRejected) {
 
 TEST(TlsValidationTest, SniWithCrlfRejected) {
   Options opts;
-  Tls tls;
-  tls.SetSni("example.com\r\nX-Injected: 1");
-  opts.SetTls(tls);
+  opts.SetTls(Tls::Builder().SetSni("example.com\r\nX-Injected: 1").Build());
   auto client = Client::Create(opts);
   ASSERT_FALSE(client.ok());
   EXPECT_EQ(ErrorCode::kInvalidArgument, client.error().code());
@@ -206,11 +199,11 @@ TEST(TlsValidationTest, SniWithCrlfRejected) {
 
 TEST(TlsValidationTest, MixedPemAndPathClientMaterialRejected) {
   Options opts;
-  Tls tls;
-  tls.SetClientCertificate(
-      "src/tests/certs/client_cert.pem",
-      "-----BEGIN PRIVATE KEY-----\n-----END PRIVATE KEY-----");
-  opts.SetTls(tls);
+  opts.SetTls(Tls::Builder()
+                  .SetCertificate(
+                      "src/tests/certs/client_cert.pem",
+                      "-----BEGIN PRIVATE KEY-----\n-----END PRIVATE KEY-----")
+                  .Build());
   auto client = Client::Create(opts);
   ASSERT_FALSE(client.ok());
   EXPECT_EQ(ErrorCode::kInvalidArgument, client.error().code());

@@ -123,16 +123,26 @@ class Response {
 ```cpp
 enum class VerifyMode { kVerifyPeer, kSkipVerification };
 
+// 不可变配置对象；经 Tls::Builder 构建后不可再修改。
 class Tls {
  public:
-  // CA 证书：内存 PEM 或文件路径
-  Tls& SetCaCertificate(const std::string& pem);
-  Tls& SetCaFile(const std::string& path);
-  // 客户端证书（mTLS）
-  Tls& SetClientCertificate(const std::string& cert, const std::string& key);
-  // SNI / 校验模式
-  Tls& SetSni(const std::string& hostname);
-  Tls& SetVerifyMode(VerifyMode mode);
+  // 只读访问器：verify_mode() / ca_pem() / ca_file() /
+  //            client_cert() / client_key() / sni()
+
+  class Builder {
+   public:
+    // CA 证书：内存 PEM 或文件路径（互斥，Validate() 拒绝冲突）
+    Builder& SetCaPem(const std::string& pem);
+    Builder& SetCaFile(const std::string& path);
+    // 客户端证书（mTLS）：PEM 或文件路径
+    Builder& SetCertificate(const std::string& cert,
+                            const std::string& key);
+    // SNI / 校验模式
+    Builder& SetSni(const std::string& hostname);
+    Builder& SetVerifyMode(VerifyMode mode);
+
+    Tls Build() const;
+  };
 };
 ```
 

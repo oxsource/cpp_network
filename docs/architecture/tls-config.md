@@ -11,7 +11,7 @@
 
 TLS 配置类型为 `cpp_network::http::Tls`，随 `Options` 注入 `Client`。它只通过 libcurl 的稳定 C API（`CURLOPT_SSL_*`）生效，不暴露 OpenSSL/libcurl 的任何类型或符号。校验逻辑独立在 `//src/tls` 包（`src/tls/tls.cc`），CURLOT 映射由 HTTP 传输引擎逐请求应用。
 
-> 相比 001 设计稿的落地差异：类名简化为 `Tls`；Builder 改为链式 setter 直接返回 `Tls&`；CA 支持 **内存 PEM 与文件路径双形态**；校验入口为 `Tls::Validate()`，经 `Options::Validate()` 在 `Client::Create()` 前置拒绝（返回 `Result` 错误而非异常）。
+> 相比 001 设计稿的落地差异：类名简化为 `Tls`；采用 **不可变对象 + `Tls::Builder` 链式构建**（实例创建后无 setter）；CA 支持 **内存 PEM 与文件路径双形态**；校验入口为 `Tls::Validate()`，经 `Options::Validate()` 在 `Client::Create()` 前置拒绝（返回 `Result` 错误而非异常）。
 
 ## 实际类型定义（src/public/include/http/tls.h）
 
@@ -26,16 +26,22 @@ enum class VerifyMode {
 
 class Tls {
  public:
-  Tls& SetVerifyMode(VerifyMode mode);
-  Tls& SetCaCertificate(const std::string& pem);              // 内存 PEM
-  Tls& SetCaFile(const std::string& path);                    // 文件路径
-  Tls& SetClientCertificate(const std::string& cert,          // mTLS：PEM 或文件路径
-                            const std::string& key);
-  Tls& SetSni(const std::string& hostname);
+  Tls() = default;     // 默认即 kVerifyPeer；实例创建后不可再修改
 
   Result<void> Validate() const;                              // 见下
   // 只读访问器：verify_mode() / ca_pem() / ca_file() / client_cert() /
   //            client_key() / sni()
+
+  class Builder {    // 不可变 Tls 的链式构建器
+   public:
+    Builder& SetVerifyMode(VerifyMode mode);
+    Builder& SetCaPem(const std::string& pem);                  // 内存 PEM
+    Builder& SetCaFile(const std::string& path);                // 文件路径
+    Builder& SetCertificate(const std::string& cert,            // mTLS：PEM 或文件路径
+                            const std::string& key);
+    Builder& SetSni(const std::string& hostname);
+    Tls Build() const;
+  };
 };
 
 }  // namespace http
@@ -46,8 +52,8 @@ class Tls {
 
 `Client::Create()` 时前置校验，失败返回 `Error(kInvalidArgument)`：
 
-1. **CA 来源互斥**：`ca_file` 与 `ca_certificate` 不得同时设置。
-2. **内联 CA PEM 合法性**：`SetCaCertificate` 内容必须含完整 PEM 块（`-----BEGIN` 且有匹配 `-----END`）；文件路径非空。
+1. **CA 来源互斥**：`ca_file` 与 `ca_pem` 不得同时设置。
+2. **内联 CA PEM 合法性**：`SetCaPem` 内容必须含完整 PEM 块（`-----BEGIN` 且有匹配 `-----END`，判定用 `Tls::IsPemText`）；文件路径非空。
 3. **mTLS 成对**：客户端证书与私钥必须同时设置或同时为空。
 4. **mTLS 形态一致**：证书与私钥必须同为内联 PEM 或同为文件路径。
 5. **PEM 合法性**：内联证书/私钥须含匹配的 BEGIN/END 块。
@@ -60,14 +66,14 @@ class Tls {
 | `verify_mode == kVerifyPeer` | `CURLOPT_SSL_VERIFYPEER = 1`，`CURLOPT_SSL_VERIFYHOST = 2` |
 | `verify_mode == kSkipVerification` | `CURLOPT_SSL_VERIFYPEER = 0`，`CURLOPT_SSL_VERIFYHOST = 0` |
 | `ca_file` 非空 | `CURLOPT_CAINFO`（文件路径） |
-| `ca_certificate`（内存 PEM） | `CURLOPT_CAINFO_BLOB`（运行时 curl ≥7.77）；失败回退临时文件 → `CURLOPT_CAINFO` |
+| `ca_pem`（内存 PEM） | `CURLOPT_CAINFO_BLOB`（运行时 curl ≥7.77）；失败回退临时文件 → `CURLOPT_CAINFO` |
 | 客户端证书/私钥为内联 PEM | `CURLOPT_SSLCERT_BLOB`/`SSLKEY_BLOB`（运行时 curl ≥7.71）；失败回退临时文件 → `CURLOPT_SSLCERT`/`SSLKEY` |
 | 客户端证书/私钥为文件路径 | `CURLOPT_SSLCERT` / `CURLOPT_SSLKEY` |
 | `sni` | `CURLOPT_SNI_HOSTNAME`（编译期 `#ifdef` 保护） |
 
-### Blob 运行时回退（Tls::MaterializePem）
+### Blob 运行时回退（Tls::CachedPemPath）
 
-部分系统 libcurl（如 macOS 系统库）在头文件中声明了 `*_BLOB` 选项，但运行时对未支持的选项返回 `CURLE_FAILED_INIT`。内联 PEM 的判定（`Tls::IsInlinePem`）与物化（`Tls::MaterializePem`）均由 `Tls` 静态方法提供，映射层采用"先 blob、后临时文件"的两级策略：临时文件按 PEM 内容缓存（进程生命周期内有效，保证路径跨传输可用），写入 `$TMPDIR/cpp_network_pem_XXXXXX`。
+部分系统 libcurl（如 macOS 系统库）在头文件中声明了 `*_BLOB` 选项，但运行时对未支持的选项返回 `CURLE_FAILED_INIT`。内联 PEM 的判定（`Tls::IsPemText`）与缓存落地（`Tls::CachedPemPath`，get-or-create 返回稳定文件路径）均由 `Tls` 静态方法提供，映射层采用"先 blob、后缓存文件"的两级策略：文件按 PEM 内容缓存（进程生命周期内有效，保证路径跨传输可用），当前实现写入 `$TMPDIR/cpp_network_pem_XXXXXX`；落盘位置属实现细节，后续可能调整（如改用内存盘或专用缓存目录），调用方不得假设。
 
 ## 平台差异收敛
 

@@ -210,7 +210,7 @@ Error ApplyEasyOptions(CURL* easy, const Request& req, const Options& options,
     applied = (rc == CURLE_OK);
 #endif
     if (!applied) {
-      const char* ca_path = Tls::MaterializePem(*tls.ca_pem());
+      const char* ca_path = Tls::CachedPemPath(*tls.ca_pem());
       if (ca_path == nullptr) {
         return Error(ErrorCode::kInvalidArgument,
                      "failed to materialize inline CA PEM for curl without "
@@ -228,8 +228,8 @@ Error ApplyEasyOptions(CURL* easy, const Request& req, const Options& options,
     // Inline PEM material (detected by Tls) is passed via *_BLOB options
     // (runtime curl >= 7.71) with a temp-file fallback; anything else is
     // treated as a file path.
-    const bool cert_is_pem = Tls::IsInlinePem(*tls.client_cert());
-    const bool key_is_pem = Tls::IsInlinePem(*tls.client_key());
+    const bool cert_is_pem = Tls::IsPemText(*tls.client_cert());
+    const bool key_is_pem = Tls::IsPemText(*tls.client_key());
 
     bool cert_applied = false;
     bool key_applied = false;
@@ -255,9 +255,9 @@ Error ApplyEasyOptions(CURL* easy, const Request& req, const Options& options,
     }
 
     const char* cert_path =
-        cert_is_pem ? Tls::MaterializePem(*tls.client_cert())
+        cert_is_pem ? Tls::CachedPemPath(*tls.client_cert())
                     : tls.client_cert()->c_str();
-    const char* key_path = key_is_pem ? Tls::MaterializePem(*tls.client_key())
+    const char* key_path = key_is_pem ? Tls::CachedPemPath(*tls.client_key())
                                       : tls.client_key()->c_str();
     if (cert_path == nullptr || key_path == nullptr) {
       return Error(ErrorCode::kInvalidArgument,

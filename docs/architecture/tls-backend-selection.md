@@ -1,23 +1,24 @@
-# TLS Backend Selection Design（全平台 OpenSSL）
+# TLS Backend Selection Design（后端跟随平台）
 
-**Branch**: `001-cpp-network-library` | **Date**: 2026-08-26（修订：2026-08-26 全平台 OpenSSL）
+**Branch**: `001-cpp-network-library` | **Date**: 2026-08-26（第二次修订：2026-08-26 改为"后端跟随平台"，详见 ADR-003）
 
-> **状态（2026-08-26，spec 003 实现核对）**：决策方向（全平台 OpenSSL 经 libcurl、不暴露后端类型）已实现，但落地形态与本文布局不同——见下方"实际落地"节。
+> **状态（2026-08-26 第二次修订）**：ADR-003 已由"全平台统一 OpenSSL 源码构建"修订为"**TLS 后端跟随平台，验收标准 = HTTPS + 自定义证书能力**"。本文原"全平台 OpenSSL"章节保留为历史设计，现行策略以"实际落地"节为准。
 
 **对应需求**: FR-003（平台无关 TLS 抽象）、FR-016（不暴露后端细节）、FR-014（多平台构建）
 
-**相关设计**: [bazel-platforms.md](bazel-platforms.md)、[tls-config.md](tls-config.md)、[host-openssl-build.md](host-openssl-build.md)
+**相关设计**: [ADR-003](adr/adr-003-tls-buildtime-select.md)、[bazel-platforms.md](bazel-platforms.md)、[tls-config.md](tls-config.md)、[host-openssl-build.md](host-openssl-build.md)
 
 ## Overview
 
-TLS 由 libcurl 的 SSL 后端承担，**统一使用 OpenSSL 3.x LTS**（host macOS/Linux 与 Android 平台一致）。库不提供运行时 `TlsAdapter` C++ 接口，TLS 细节完全封装在 libcurl 内部，公共 API 只暴露 `TlsConfig`（配置映射）。
+TLS 由 libcurl 的 SSL 后端承担，**后端跟随各平台惯例、不做统一要求**：验收标准是各平台经 libcurl 支持 HTTPS 与自定义证书（CA 注入/mTLS/skip），而非绑定特定后端。库不提供运行时 `TlsAdapter` C++ 接口，公共 API 只暴露 `Tls` 配置值类型。
 
-> **修订说明**：初稿为"host=OpenSSL / Android=BoringSSL"双后端 select() 方案。2026-08-26 用户决策**全平台统一 OpenSSL**，放弃 Android BoringSSL。理由：简化架构（无平台分支）、规避 BoringSSL 与 Bazel 6.5 的兼容问题。`android-boringssl-build.md` 已废弃（见其头部标注）。
+> **修订说明**：初稿为"host=OpenSSL / Android=BoringSSL"双后端 select()；第一次修订改为全平台统一 OpenSSL 源码构建；第二次修订（2026-08-26）确认用户需求不含"统一 OpenSSL"，且系统 libcurl 在 host 上已满足全部能力——源码构建降级为可选项。`android-boringssl-build.md` 已废弃。
 
 ## 决策依据
 
-- research.md Decision 4（修订）：libcurl 已抽象多种 SSL 后端，复用其抽象可避免维护自定义 TLS 适配器；全平台统一 OpenSSL 免除构建时后端 select。
-- 自研 `TlsAdapter` 接口（手写 OpenSSL/BoringSSL 双后端）被否决：重复造轮子、接口维护成本高、易引入证书处理 bug。
+- libcurl 不自带 TLS 后端，但绑定任一发行版自带的后端即可支持 HTTPS（macOS 系统 curl = SecureTransport，Linux 发行版普遍 = OpenSSL）。
+- 自研 `TlsAdapter` 接口被否决：重复造轮子、接口维护成本高、易引入证书处理 bug。
+- 全平台统一 OpenSSL 源码构建被降级：工程量大、在无 Android 真机阶段不可验证，且用户需求不要求后端统一。
 
 ## 实际落地（spec 003）
 
@@ -29,12 +30,12 @@ src/tls/
 └── tls.cc               # Tls::Validate() 校验（CA 互斥/mTLS 成对/SNI/PEM 形态）
 src/http/detail/
 ├── curl_mapping.cc      # Tls → CURLOPT_SSL_* 映射（逐请求由引擎应用），
-                         # 含 blob → 临时文件回退（MaterializePem）
+                         # 含 blob → 缓存文件回退（CachedPemPath）
 src/public/include/http/
 └── tls.h                # 公共类型：cpp_network::http::Tls / VerifyMode
 ```
 
-- 无 `internal/ssl_backend.*`：映射直接内联在 HTTP 引擎的 curl_mapping 层（逐请求应用，且依赖 MaterializePem 等传输期辅助）。
+- 无 `internal/ssl_backend.*`：映射直接内联在 HTTP 引擎的 curl_mapping 层（逐请求应用，且依赖 CachedPemPath 等传输期辅助）。
 - libcurl 以**系统库**形式经 `linkopts = ["-lcurl"]` 链接；`@openssl//:openssl`、`@libcurl//:libcurl_openssl` 尚为占位（见 host-openssl-build.md 状态横幅）。OpenSSL 不作为独立 Bazel 依赖出现。
 - 验证矩阵中 macOS arm64 已实测通过（https_test）；Linux/Android 构建配置就绪待验证。
 
@@ -80,7 +81,7 @@ cc_library(
 |----------------|--------------|
 | `verify_mode == kVerifyPeer` | `CURLOPT_SSL_VERIFYPEER=1`, `CURLOPT_SSL_VERIFYHOST=2` |
 | `verify_mode == kSkipVerification` | `CURLOPT_SSL_VERIFYPEER=0`, `CURLOPT_SSL_VERIFYHOST=0` |
-| `ca_file` / `ca_certificate`（内存 PEM） | `CURLOPT_CAINFO` / `CURLOPT_CAINFO_BLOB`（运行时 ≥7.77，失败回退临时文件） |
+| `ca_file` / `ca_pem`（内存 PEM） | `CURLOPT_CAINFO` / `CURLOPT_CAINFO_BLOB`（运行时 ≥7.77，失败回退临时文件） |
 | `client_cert` + `client_key`（PEM 或路径） | `CURLOPT_SSLCERT(_BLOB)`, `CURLOPT_SSLKEY(_BLOB)`（运行时 blob ≥7.71，回退临时文件） |
 | `sni` | `CURLOPT_SNI_HOSTNAME`（编译期 #ifdef 保护） |
 
