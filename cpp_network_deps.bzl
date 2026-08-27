@@ -6,6 +6,10 @@ archives (verified per spec 002 SC-006).
 
 Every dependency is guarded by `native.existing_rule(...)` so that repeated
 calls to `cpp_network_setup()` are no-ops.
+
+`build_file` labels are repo-qualified (@cpp_network//...) so the macro is also
+safe to call from a consumer workspace that pulls cpp_network in via
+local_repository (e.g. the video_stream module).
 """
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
@@ -23,7 +27,7 @@ _CPP_NETWORK_DEPS = [
         "sha256": "f91249c87f68ea00cf27c44fdfa5a78423e41e71b7d408e5901a9896d905c495",
         "strip_prefix": "curl-8.7.1",
         "urls": ["https://curl.se/download/curl-8.7.1.tar.gz"],
-        "build_file": "//third_party/libcurl:curl_external.BUILD",
+        "build_file": "@cpp_network//third_party/libcurl:curl_external.BUILD",
     },
     # GoogleTest for the host test suites.
     {
@@ -40,7 +44,7 @@ _CPP_NETWORK_DEPS = [
         "sha256": "e74504ed7035295ec7062b1da16c15b57ff2a03cd2064a28d8c39458cacc45fc",
         "strip_prefix": "openssl-openssl-3.0.13",
         "urls": ["https://github.com/openssl/openssl/archive/refs/tags/openssl-3.0.13.tar.gz"],
-        "build_file": "//third_party/openssl:openssl_external.BUILD",
+        "build_file": "@cpp_network//third_party/openssl:openssl_external.BUILD",
     },
     # rules_android_ndk v0.1.2 provides a modern-layout android_ndk_repository
     # that is fetched lazily (research.md D3): hosts without ANDROID_NDK_HOME
