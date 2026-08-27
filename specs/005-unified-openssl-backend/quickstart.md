@@ -2,6 +2,8 @@
 
 **Branch**: `005-unified-openssl-backend`
 
+> **工作区位置**：项目代码与 Bazel 工作区在仓库根的 **`cpp_network/`** 子目录（仓库根另含 `specs/`）。以下所有命令均在 `cpp_network/` 目录内执行；文中的 `src/`、`third_party/`、`docs/`、`./bazel-bin/`、`make`、`bazel` 均相对该工作区根。
+
 ## 对使用者的变化
 
 - **零 API 变化**：应用代码跨平台一字不改

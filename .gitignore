@@ -1,16 +1,9 @@
-# Bazel
-/bazel-*
-/bazel-bin
-/bazel-out
-/bazel-testlogs
-/bazel-cache
-/user.bazelrc
+# Bazel（工作区在 cpp_network/ 下）
+/cpp_network/bazel-*
+/cpp_network/.user.bazelrc
 
-# Bazel (sample/ 独立工作区产物，每个子目录一个外部消费示例)
-sample/*/bazel-*
-sample/*/bazel-bin
-sample/*/bazel-out
-sample/*/bazel-testlogs
+# Bazel (cpp_network/sample/ 独立工作区产物，每个子目录一个外部消费示例)
+cpp_network/sample/*/bazel-*
 
 # C/C++
 build/
@@ -42,12 +35,10 @@ Thumbs.db
 # Logs
 *.log
 
-.user.bazelrc
-
-# work/: 直接运行 third_party/scripts/build-tls.sh 调试时的现场
+# work/: 直接运行 cpp_network/third_party/scripts/build-tls.sh 调试时的现场
 # （已 Configure 的 openssl/curl 源码树副本），保留以便后续验证复用；
 # make/genrule 正式构建在 bazel 沙箱内进行，不依赖也不清理它。
-/work/
+/cpp_network/work/
 
 # Python bytecode artifacts from test fixtures
 __pycache__/

@@ -1,0 +1,105 @@
+# Native-host TLS bundle (specs/005 US1): builds pinned OpenSSL 3.0.13 +
+# libcurl 8.7.1 with the machine's own toolchain and object-level symbol
+# hiding. Compatible with macOS and Linux host configs.
+#
+# ARCH NOTE: artifacts match the EXECUTING machine's architecture by design —
+# build each host platform on that platform itself (or CI of the same arch).
+package(default_visibility = ["//visibility:public"])
+
+load("//third_party/openssl:openssl_headers.bzl", "CURL_PUBLIC_HEADERS", "OPENSSL_PUBLIC_HEADERS")
+
+genrule(
+    name = "build_tls",
+    srcs = [
+        "@openssl//:sources",
+        "@openssl//:root_entrypoint",
+        "@curl//:sources",
+        "@curl//:root_entrypoint",
+        "//third_party/scripts:build_openssl.sh",
+    ],
+    outs = [
+        "lib/libcrypto.a",
+        "lib/libssl.a",
+        "lib/libcurl.a",
+    ] + CURL_PUBLIC_HEADERS + OPENSSL_PUBLIC_HEADERS,
+    cmd = """
+set -e
+
+SCRIPT=$(location //third_party/scripts:build_openssl.sh)
+OPENSSL_SRC_DIR=$$(dirname $(location @openssl//:root_entrypoint))
+CURL_SRC_DIR=$$(dirname $(location @curl//:root_entrypoint))
+
+bash $$SCRIPT host "$$OPENSSL_SRC_DIR" "$$CURL_SRC_DIR" "$$PWD/tls-install"
+
+mkdir -p "$(RULEDIR)/lib" "$(RULEDIR)/include/curl" "$(RULEDIR)/include/openssl"
+cp tls-install/lib/libcrypto.a "$(RULEDIR)/lib/libcrypto.a"
+cp tls-install/lib/libssl.a "$(RULEDIR)/lib/libssl.a"
+cp tls-install/lib/libcurl.a "$(RULEDIR)/lib/libcurl.a"
+""" + "\n".join([
+        'cp "tls-install/%s" "$(RULEDIR)/%s"' % (hdr, hdr)
+        for hdr in CURL_PUBLIC_HEADERS + OPENSSL_PUBLIC_HEADERS
+    ]),
+    message = "building OpenSSL+libcurl for the native host",
+    tags = ["local", "manual"],
+)
+
+# Single-label handoff of the full installed tree (lib/ + include/) so OTHER
+# packages' genrules can consume the bundle without cross-package per-file
+# references (specs/006: libwebsockets builds against this tree).
+genrule(
+    name = "bundle_tar",
+    srcs = [":build_tls"],
+    outs = ["tls-install.tar.gz"],
+    cmd = """
+set -e
+cd "$(RULEDIR)" && tar -czf tls-install.tar.gz lib include
+""",
+    message = "packing native-host TLS bundle tree",
+    tags = ["local", "manual"],
+)
+
+cc_library(
+    name = "curl",
+    srcs = [
+        "lib/libcurl.a",
+        "lib/libssl.a",
+        "lib/libcrypto.a",
+    ],
+    hdrs = CURL_PUBLIC_HEADERS,
+    strip_include_prefix = "include",
+    # macOS builds compile lib/macos.c (CURL_MACOS_CALL_COPYPROXIES): it
+    # requires these two system frameworks at final-link time. Linux static
+    # archives (libssl/libcrypto/libcurl) need pthread/dl/m on glibc (< 2.34
+    # splits them out of libc; newer glibc keeps no-op stubs for compat).
+    linkopts = select({
+        "//platforms:macos_arm64_setting": [
+            "-framework CoreFoundation",
+            "-framework SystemConfiguration",
+        ],
+        "//platforms:macos_x86_64_setting": [
+            "-framework CoreFoundation",
+            "-framework SystemConfiguration",
+        ],
+        "//platforms:linux_x86_64_setting": ["-lpthread", "-ldl", "-lm"],
+        "//platforms:linux_aarch64_setting": ["-lpthread", "-ldl", "-lm"],
+        "//conditions:default": [],
+    }),
+)
+
+# Reusable OpenSSL slice of the TLS bundle: same genrule outputs, exposed so
+# external consumers that only need OpenSSL (e.g. libdatachannel's DTLS) link
+# the bundle instead of building their own OpenSSL copy.
+cc_library(
+    name = "openssl",
+    srcs = [
+        "lib/libssl.a",
+        "lib/libcrypto.a",
+    ],
+    hdrs = OPENSSL_PUBLIC_HEADERS,
+    strip_include_prefix = "include",
+    linkopts = select({
+        "//platforms:linux_x86_64_setting": ["-lpthread", "-ldl", "-lm"],
+        "//platforms:linux_aarch64_setting": ["-lpthread", "-ldl", "-lm"],
+        "//conditions:default": [],
+    }),
+)

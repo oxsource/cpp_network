@@ -1,0 +1,8 @@
+# Package marker for the injected @curl file list (curl_external.BUILD).
+#
+# The android_arm64 config consumes pinned libcurl via the cross-build
+# genrule in //third_party/openssl; host configs link the system libcurl
+# and never touch this archive (specs/004 research.md D2).
+package(default_visibility = ["//visibility:public"])
+
+exports_files(["curl_external.BUILD"])

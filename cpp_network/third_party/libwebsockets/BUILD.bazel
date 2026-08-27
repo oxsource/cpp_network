@@ -1,0 +1,8 @@
+# Package marker for the injected @lws file list (libwebsockets.BUILD).
+#
+# libwebsockets v4.5.8 is CMake-built against the TLS bundle's OpenSSL slice
+# by third_party/scripts/build_libwebsockets.sh via third_party/libwebsockets/{host,android}
+# (specs/006 research.md D2). This package only declares the injection file.
+package(default_visibility = ["//visibility:public"])
+
+exports_files(["libwebsockets.BUILD"])

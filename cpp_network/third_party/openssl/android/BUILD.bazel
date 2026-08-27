@@ -1,0 +1,79 @@
+# Android arm64-v8a TLS bundle (specs/004 semantics preserved; driver
+# generalized in specs/005 T001). Cross-built from pinned sources via the NDK;
+# outputs feed src/http on --config=android_arm64 only.
+package(default_visibility = ["//visibility:public"])
+
+load("//third_party/openssl:openssl_headers.bzl", "CURL_PUBLIC_HEADERS", "OPENSSL_PUBLIC_HEADERS")
+
+genrule(
+    name = "build_tls",
+    srcs = [
+        "@openssl//:sources",
+        "@openssl//:root_entrypoint",
+        "@curl//:sources",
+        "@curl//:root_entrypoint",
+        "//third_party/scripts:build_openssl.sh",
+    ],
+    outs = [
+        "lib/libcrypto.a",
+        "lib/libssl.a",
+        "lib/libcurl.a",
+    ] + CURL_PUBLIC_HEADERS + OPENSSL_PUBLIC_HEADERS,
+    cmd = """
+set -e
+
+SCRIPT=$(location //third_party/scripts:build_openssl.sh)
+OPENSSL_SRC_DIR=$$(dirname $(location @openssl//:root_entrypoint))
+CURL_SRC_DIR=$$(dirname $(location @curl//:root_entrypoint))
+
+bash $$SCRIPT android "$$OPENSSL_SRC_DIR" "$$CURL_SRC_DIR" "$$PWD/tls-install"
+
+mkdir -p "$(RULEDIR)/lib" "$(RULEDIR)/include/curl" "$(RULEDIR)/include/openssl"
+cp tls-install/lib/libcrypto.a "$(RULEDIR)/lib/libcrypto.a"
+cp tls-install/lib/libssl.a "$(RULEDIR)/lib/libssl.a"
+cp tls-install/lib/libcurl.a "$(RULEDIR)/lib/libcurl.a"
+""" + "\n".join([
+        'cp "tls-install/%s" "$(RULEDIR)/%s"' % (hdr, hdr)
+        for hdr in CURL_PUBLIC_HEADERS + OPENSSL_PUBLIC_HEADERS
+    ]),
+    message = "cross-building OpenSSL+libcurl for android_arm64",
+    tags = ["local", "manual"],
+)
+
+# Single-label handoff of the full installed tree for other packages'
+# genrules (specs/006: libwebsockets builds against this tree).
+genrule(
+    name = "bundle_tar",
+    srcs = [":build_tls"],
+    outs = ["tls-install.tar.gz"],
+    cmd = """
+set -e
+cd "$(RULEDIR)" && tar -czf tls-install.tar.gz lib include
+""",
+    message = "packing android TLS bundle tree",
+    tags = ["local", "manual"],
+)
+
+cc_library(
+    name = "curl",
+    srcs = [
+        "lib/libcurl.a",
+        "lib/libssl.a",
+        "lib/libcrypto.a",
+    ],
+    hdrs = CURL_PUBLIC_HEADERS,
+    strip_include_prefix = "include",
+    target_compatible_with = ["@platforms//os:android"],
+)
+
+# Reusable OpenSSL slice of the TLS bundle (mirrors third_party/openssl/host).
+cc_library(
+    name = "openssl",
+    srcs = [
+        "lib/libssl.a",
+        "lib/libcrypto.a",
+    ],
+    hdrs = OPENSSL_PUBLIC_HEADERS,
+    strip_include_prefix = "include",
+    target_compatible_with = ["@platforms//os:android"],
+)

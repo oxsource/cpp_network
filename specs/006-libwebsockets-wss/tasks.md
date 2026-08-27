@@ -22,9 +22,9 @@
 
 **Purpose**: 三方组件纳入单一事实源治理并具备构建驱动
 
-- [x] T001 在 cpp_network_deps.bzl 注册 `lws` 条目（字母序置于 curl 之后）：`https://github.com/warmcat/libwebsockets/archive/refs/tags/v4.5.8.tar.gz`，sha256=`b6ade658f4af3a823d0dc806ae5ef0623f0f4f5e2aeb895a0f77c4783840c30e`（research D1 实测值），strip_prefix=`libwebsockets-4.5.8`，`build_file` 用 `@cpp_network//third_party/libwebsockets:lws_external.BUILD`；创建 third_party/libwebsockets/BUILD.bazel 包标记与 lws_external.BUILD（filegroup 导出全部源与 CMakeLists，对照 openssl_external.BUILD 形态）
+- [x] T001 在 cpp_network_deps.bzl 注册 `lws` 条目（字母序置于 curl 之后）：`https://github.com/warmcat/libwebsockets/archive/refs/tags/v4.5.8.tar.gz`，sha256=`b6ade658f4af3a823d0dc806ae5ef0623f0f4f5e2aeb895a0f77c4783840c30e`（research D1 实测值），strip_prefix=`libwebsockets-4.5.8`，`build_file` 用 `@cpp_network//third_party/libwebsockets:libwebsockets.BUILD`；创建 third_party/libwebsockets/BUILD.bazel 包标记与 libwebsockets.BUILD（filegroup 导出全部源与 CMakeLists，对照 openssl.BUILD 形态）
 - [x] T002 [P] 扩展 tools/platform_setup.sh：新增 cmake 存在性与版本下限检查（缺失时给出安装指引的 NOTICE 行，风格同 NDK 解析提示）
-- [x] T003 编写 third_party/scripts/build-lws.sh：MODE=android|host 的 CMake 构建驱动，参数 `<openssl-install-dir> <install-dir>`；特性裁剪按 research D2 清单（WITHOUT_SERVER/EXTENSIONS/TESTAPPS、STATIC=ON、SSL=ON 且 OPENSSL_ROOT_DIR 指向传入目录、STATIC_PIC=ON）；android 分支复用 build-tls.sh 的 NDK 导出集（CC/CXX/AR/RANLIB/PATH）
+- [x] T003 编写 third_party/scripts/build_libwebsockets.sh：MODE=android|host 的 CMake 构建驱动，参数 `<openssl-install-dir> <install-dir>`；特性裁剪按 research D2 清单（WITHOUT_SERVER/EXTENSIONS/TESTAPPS、STATIC=ON、SSL=ON 且 OPENSSL_ROOT_DIR 指向传入目录、STATIC_PIC=ON）；android 分支复用 build_openssl.sh 的 NDK 导出集（CC/CXX/AR/RANLIB/PATH）
 
 ## Phase 2: Foundational（阻塞性前置）
 
@@ -32,10 +32,10 @@
 
 **⚠ 先决**: Phase 1 完成（T003 被 T004 直接消费）
 
-- [x] T004 创建 third_party/lws/host/BUILD.bazel：genrule 以 build-lws.sh host 构建（install 目录产出 lib/libwebsockets.a 与 include/lws 公共头清单作为 outs），cc_library `lws`（静态包 + hdrs + strip_include_prefix="include"）；macos_arm64 下 `bazel build //third_party/lws/host:lws` 通过且归档为 Mach-O arm64（证据存 specs/006-libwebsockets-wss/evidence/build-matrix.md）
-- [x] T005 创建 third_party/lws/android/BUILD.bazel 双胞胎包（genrule 走 MODE=android，约束同 tls/android 的 target_compatible_with）；`bazel cquery --config=android_arm64 //third_party/lws/android:lws` 分析通过（真机构建级验证在 US4/T020 完成闭路）
+- [x] T004 创建 third_party/libwebsockets/host/BUILD.bazel：genrule 以 build_libwebsockets.sh host 构建（install 目录产出 lib/libwebsockets.a 与 include/lws 公共头清单作为 outs），cc_library `websockets`（静态包 + hdrs + strip_include_prefix="include"）；macos_arm64 下 `bazel build //third_party/libwebsockets/host:websockets` 通过且归档为 Mach-O arm64（证据存 specs/006-libwebsockets-wss/evidence/build-matrix.md）
+- [x] T005 创建 third_party/libwebsockets/android/BUILD.bazel 双胞胎包（genrule 走 MODE=android，约束同 openssl/android 的 target_compatible_with）；`bazel cquery --config=android_arm64 //third_party/libwebsockets/android:websockets` 分析通过（真机构建级验证在 US4/T020 完成闭路）
 - [x] T006 扩展 src/public/include/http/error.h：Error 增加可选附加载荷字段 `close_code(uint16_t, 0=未知)` 与 `close_reason(string)`（仅 websocket 层填充，data-model.md CloseInfo），补充 `kConnectionClosed` 错误码（若枚举中不存在）；HTTP 现有错误取值集不变（FR-011 前提确认）
-- [x] T007 创建 src/public/include/http/websocket.h：`WsMessage{data,is_text}`、`WsCloseCode`(1000/1001/1002/1003/1005/1006)、`WebSocket` 类声明（静态 Connect(url, NetworkConfig)/IsOpen/Send/Receive/Close，私有 Impl 共享指针），NETLIB_API 标注并对齐 contracts/websocket-api.md 签名；http_umbrella.h 追加 include；src/websocket/BUILD.bazel 从空占位重写为实目标（deps: //src/tls:tls、@public_headers、//third_party/lws:{host,android}:lws 经 select 路由同 src/http/_TLS_DEPS 模式）并入 engine/client 的 alwayslink 链
+- [x] T007 创建 src/public/include/http/websocket.h：`WsMessage{data,is_text}`、`WsCloseCode`(1000/1001/1002/1003/1005/1006)、`WebSocket` 类声明（静态 Connect(url, NetworkConfig)/IsOpen/Send/Receive/Close，私有 Impl 共享指针），NETLIB_API 标注并对齐 contracts/websocket-api.md 签名；http_umbrella.h 追加 include；src/websocket/BUILD.bazel 从空占位重写为实目标（deps: //src/tls:tls、@public_headers、//third_party/lws:{host,android}:websockets 经 select 路由同 src/http/_TLS_DEPS 模式）并入 engine/client 的 alwayslink 链
 
 ## Phase 3: User Story 1 —— 建立 WebSocket 连接（ws+wss 双通道）(Priority: P1)
 
@@ -76,7 +76,7 @@
 - [x] T017 [US4] 扩展 src/tests/device_e2e.cc（contracts/device-scenarios.md）：追加 W 场景段（external 模式公网 wss echo 回声、local 模式 on-device fixture 双通道+mTLS+对端关闭详情），输出 `[W*] PASS : …` 行与分组小计，既有 S/E 段与退出码协议不变（工具 android_device.sh 若需挂载新 fixture 同步更新）
 - [x] T018 [P] [US4] 重写 docs/architecture/websocket-api.md 与 docs/architecture/websocket-message-flow.md：删除 curl_ws_* 草案内容，替换为 libwebsockets v4.5.8 实现语义（同步四操作、状态机、内存 PEM 直达、ws 明文静默忽略 TLS 说明），命名收敛 `cpp_network::http::WebSocket`
 - [x] T019 [P] [US4] 新增 docs/architecture/adr/adr-004-websockets-transport.md：记录"libwebsockets vs curl_ws_*"选型决策、单一 TLS 栈纪律（bundle :openssl 复用）与 CMake 工具链前提；docs/architecture/README.md 索引同步
-- [x] T020 [US4] 终验三件套并写 specs/006-libwebsockets-wss/evidence/：① `bazel test //...` 全绿（套件数 6→7，既有断言零删改）；② `make android_verify DEVICE=<serial>` W 段全绿（真机 be11）；③ 升级演练 `touch build-lws.sh && bazel clean && make verify && make android_build` 计时与 SC-001 环回 p95 采样记录
+- [x] T020 [US4] 终验三件套并写 specs/006-libwebsockets-wss/evidence/：① `bazel test //...` 全绿（套件数 6→7，既有断言零删改）；② `make android_verify DEVICE=<serial>` W 段全绿（真机 be11）；③ 升级演练 `touch build_libwebsockets.sh && bazel clean && make verify && make android_build` 计时与 SC-001 环回 p95 采样记录
 
 ---
 

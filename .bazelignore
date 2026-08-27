@@ -1,4 +1,0 @@
-# Nested workspace (external-consumption demo): excluded so that `//...`
-# never traverses its generated symlinks (bazel-*) which loop back into this
-# repository. Build it separately: cd sample/consumer_demo && bazel build ...
-sample/consumer_demo

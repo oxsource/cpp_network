@@ -37,7 +37,7 @@
 
 **构建机制**: `rules_foreign_cc`（Bazel 6.5 兼容线）的 `configure_make` / `autotools` 规则承载两个第三方项目；NDK 工具链由 `android_ndk_repository` 提供的 clang wrapper（`CC/CXX/AR/RANLIB` 及 sysroot flags）透传。
 
-**T003/T004 实施修订（2026-08-27）**: 落地时改为 **宿主侧构建脚本 + genrule** 方案（`third_party/scripts/build-android-tls.sh`，单一 genrule 于 `//third_party/androidtls` 固定命名产出 libcrypto/libssl/libcurl.a 与 12 个 `include/curl/*.h` 公共头，经 `cc_library(name="android_curl")` 暴露）。动机：
+**T003/T004 实施修订（2026-08-27）**: 落地时改为 **宿主侧构建脚本 + genrule** 方案（`third_party/scripts/build_openssl.sh`，单一 genrule 于 `//third_party/openssl/host` 固定命名产出 libcrypto/libssl/libcurl.a 与 12 个 `include/curl/*.h` 公共头，经 `cc_library(name="curl")` 暴露）。动机：
 1. rules_foreign_cc 的 include 产物为 TreeArtifact（哈希化路径），无法向下游原生 cc 规则提供稳定的 `-I` 引用；链式两段构建还要解决动态 env 注入，调试面大。
 2. 脚本方案在沙箱内直接消费 `--action_env=ANDROID_NDK_HOME`，编译命令全程可见、失败易定位；实测 openssl(19s)+curl(22s) 干净构建约 40s。
 其余约束不变：版本 pin 不动、协议裁剪清单一致、host 分支零触碰。rules_foreign_cc 注册保留作后备。另两个附带修正已实测验证：① `@curl` 改用官方发布包（GitHub 归档缺预生成 configure）；② `.bazelrc` 移除 `--enable_platform_specific_config`——它会在命令行解析后重注宿主平台配置，静默覆盖显式交叉 config。⚠️ 取证注意：toolchain-resolution 模式下 Bazel 输出目录沿用宿主命名（darwin_arm64-fastbuild），产物实际为 Android ELF，必须用 `file` 判定而非目录名。

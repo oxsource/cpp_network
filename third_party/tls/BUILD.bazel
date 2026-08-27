@@ -1,2 +1,0 @@
-# Package marker for tls_headers.bzl (shared by third_party/tls/{host,android}).
-package(default_visibility = ["//visibility:public"])

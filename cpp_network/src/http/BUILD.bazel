@@ -1,0 +1,114 @@
+# HTTP implementation for the cpp_network library (synchronous API over libcurl).
+# Public type definitions live in //src/public:public_headers; this package
+# provides the implementation translation units. TLS validation lives in
+# //src/tls:tls; CURLOPT_SSL_* mapping is applied here per-request.
+package(default_visibility = [
+    "@cpp_network//src/public:__pkg__",
+    "@cpp_network//src/tests:__pkg__",
+])
+
+PUBLIC_HEADERS = "@cpp_network//src/public:public_headers"
+cc_library(
+    name = "error",
+    srcs = ["error.cc"],
+    deps = [PUBLIC_HEADERS],
+)
+
+cc_library(
+    name = "result",
+    deps = [
+        PUBLIC_HEADERS,
+        ":error",
+    ],
+)
+
+cc_library(
+    name = "method",
+    deps = [PUBLIC_HEADERS],
+)
+
+cc_library(
+    name = "url",
+    srcs = ["url.cc"],
+    deps = [PUBLIC_HEADERS],
+)
+
+cc_library(
+    name = "request",
+    srcs = ["request.cc"],
+    hdrs = ["detail/http_constants.h"],
+    deps = [
+        PUBLIC_HEADERS,
+        ":error",
+        ":method",
+        ":result",
+        ":url",
+    ],
+)
+
+cc_library(
+    name = "response",
+    srcs = ["response_stream.cc"],
+    deps = [
+        PUBLIC_HEADERS,
+        ":error",
+        ":result",
+    ],
+)
+
+cc_library(
+    name = "options",
+    srcs = ["options.cc"],
+    deps = [
+        PUBLIC_HEADERS,
+        ":error",
+        ":result",
+        "//src/tls:tls",
+    ],
+)
+
+# Every platform links the same source-built OpenSSL+libcurl bundle
+# (specs/005): the select only routes to the matching builder package.
+# There is no system-libcurl fallback left in the graph (FR-003).
+_TLS_DEPS = select({
+    "//platforms:android_arm64_setting": ["//third_party/openssl/android:curl"],
+    "//platforms:macos_arm64_setting": ["//third_party/openssl/host:curl"],
+    "//platforms:macos_x86_64_setting": ["//third_party/openssl/host:curl"],
+    "//platforms:linux_x86_64_setting": ["//third_party/openssl/host:curl"],
+    "//platforms:linux_aarch64_setting": ["//third_party/openssl/host:curl"],
+    "//conditions:default": [],
+})
+
+cc_library(
+    name = "engine",
+    alwayslink = 1,
+    srcs = ["engine.cc", "detail/curl_mapping.cc"],
+    hdrs = ["engine.h", "detail/curl_mapping.h", "detail/http_constants.h"],
+    deps = [
+        PUBLIC_HEADERS,
+        ":error",
+        ":method",
+        ":options",
+        ":request",
+        ":response",
+        ":result",
+        "//src/tls:tls",
+    ] + _TLS_DEPS,
+)
+
+cc_library(
+    name = "client",
+    alwayslink = 1,
+    srcs = ["client.cc"],
+    deps = [
+        PUBLIC_HEADERS,
+        ":engine",
+        ":error",
+        ":method",
+        ":options",
+        ":request",
+        ":response",
+        ":result",
+        "//src/tls:tls",
+    ] + _TLS_DEPS,
+)

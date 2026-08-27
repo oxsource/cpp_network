@@ -1,0 +1,48 @@
+# Public API surface of the cpp_network library: shared core types under
+# comm/, the HTTP protocol under http/, and the WebSocket module under ws/.
+package(default_visibility = ["//visibility:public"])
+
+# Header-only public API types. Both the aggregate target and the per-module
+# implementations depend on this to share the `comm/`, `http/`, `ws/` include
+# prefixes without circular dependencies.
+cc_library(
+    name = "public_headers",
+    hdrs = [
+        "include/comm/export.h",
+        "include/comm/error.h",
+        "include/comm/result.h",
+        "include/comm/url.h",
+        "include/comm/tls.h",
+        "include/comm/options.h",
+        "include/http/http_umbrella.h",
+        "include/http/method.h",
+        "include/http/headers.h",
+        "include/http/request.h",
+        "include/http/response.h",
+        "include/http/client.h",
+        "include/ws/websocket.h",
+    ],
+    includes = ["include"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "cpp_network",
+    deps = [
+        ":public_headers",
+        "@cpp_network//src/http:client",
+        "@cpp_network//src/http:url",
+        "@cpp_network//src/websocket:websocket",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+cc_binary(
+    name = "cpp_network_shared",
+    srcs = [],
+    linkshared = True,
+    linkstatic = True,
+    defines = ["CPP_NETWORK_HTTP_SHARED_LIBRARY"],
+    deps = [":cpp_network"],
+    visibility = ["//visibility:public"],
+)

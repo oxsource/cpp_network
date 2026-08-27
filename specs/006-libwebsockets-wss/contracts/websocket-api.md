@@ -1,6 +1,6 @@
 # Public API Contract: WebSocket（ws + wss）
 
-头文件：`src/public/include/http/websocket.h`；命名空间 `cpp_network::http`；导出宏沿用 `NETLIB_API`。同步阻塞、无回调（spec FR-002）。
+头文件：`src/public/include/ws/websocket.h`；命名空间 `cpp_network::ws`（与 http 平级模块）；导出宏 `CPP_NETWORK_WS_EXPORT`。同步阻塞、无回调（spec FR-002）。
 
 ```cpp
 #pragma once
@@ -9,10 +9,10 @@
 #include <vector>
 
 #include "http/network_config.h"
-#include "http/result.h"
+#include "comm/result.h"
 
 namespace cpp_network {
-namespace http {
+namespace ws {
 
 struct NETLIB_API WsMessage {
   std::vector<uint8_t> data;  // 载荷字节；零长度合法
@@ -49,7 +49,7 @@ class NETLIB_API WebSocket {
   explicit WebSocket(std::shared_ptr<Impl> impl);
 };
 
-}  // namespace http
+}  // namespace ws
 }  // namespace cpp_network
 ```
 

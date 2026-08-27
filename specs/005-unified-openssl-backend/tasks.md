@@ -24,9 +24,9 @@
 
 **Purpose**: 宿主模式构建能力与链接翻转的前置项；阻塞全部用户故事
 
-- [x] T001 Generalize third_party/scripts/build-android-tls.sh into a MODE-parameterized driver (MODE=android preserves current behavior byte-for-byte; MODE=host selects OpenSSL Configure target via uname mapping darwin64-arm64/darwin64-x86_64/linux-x86_64/linux-aarch64, drops cross flags/--host, keeps the identical trim set, exports AR=/usr/bin/ar & RANLIB=/usr/bin/ranlib on macOS, injects -fvisibility=hidden -fPIC) per research.md D1
-- [x] T002 Update third_party/androidtls/BUILD.bazel: genrule dispatches on config (android_arm64 -> MODE=android with ANDROID_NDK_HOME; macos/linux configs -> MODE=host) so the same target names build per-config outputs for all five platforms (data-model BuildArtifact.config 细化)
-- [x] T003 Verify host variant builds: `bazel build --config=macos_arm64 //third_party/androidtls:build_tls` produces Mach-O-format static archives + include/curl headers; record archive format check evidence (D1 防御性 ar 选择验证)
+- [x] T001 Generalize third_party/scripts/build_openssl.sh into a MODE-parameterized driver (MODE=android preserves current behavior byte-for-byte; MODE=host selects OpenSSL Configure target via uname mapping darwin64-arm64/darwin64-x86_64/linux-x86_64/linux-aarch64, drops cross flags/--host, keeps the identical trim set, exports AR=/usr/bin/ar & RANLIB=/usr/bin/ranlib on macOS, injects -fvisibility=hidden -fPIC) per research.md D1
+- [x] T002 Update third_party/openssl/{host,android}/BUILD.bazel: genrule dispatches on config (android_arm64 -> MODE=android with ANDROID_NDK_HOME; macos/linux configs -> MODE=host) so the same target names build per-config outputs for all five platforms (data-model BuildArtifact.config 细化)
+- [x] T003 Verify host variant builds: `bazel build --config=macos_arm64 //third_party/openssl/host:build_tls` produces Mach-O-format static archives + include/curl headers; record archive format check evidence (D1 防御性 ar 选择验证)
 
 **Checkpoint**: 宿主源码构建能力就绪——后续翻转无基础设施风险
 
@@ -42,7 +42,7 @@
 
 > **NOTE**: T004 是不可逆翻转提交的单粒度边界；回退手段 = git revert（research.md D5）
 
-- [x] T004 [US1] Converge src/http/BUILD.bazel link selection: unconditionally depend on //third_party/androidtls:android_curl (rename later if desired) for ALL configs, delete both `-lcurl` legacy branches, keep android action_env only where needed (.bazelrc untouched otherwise); FR-003 完成
+- [x] T004 [US1] Converge src/http/BUILD.bazel link selection: unconditionally depend on //third_party/openssl/host:curl for ALL configs, delete both `-lcurl` legacy branches, keep android action_env only where needed (.bazelrc untouched otherwise); FR-003 完成
 - [x] T005 [US1] macOS runtime regression evidence capture: run all six gtest suites, device_e2e dual-mode (external E1-E3 with trusted anchor; local S1-S7 via RUN_MODE=local), http_demo smoke — record PASS lists to specs/005-unified-openssl-backend/evidence/macos-arm64-runtime.md (SC-001/SC-003)
 - [x] T006 [US1] Confirm S3 memory-injection now flows through native blob capability without temp-file fallback: enable verbose or instrument check comparing CachedPemPath non-invocation (FR-005 行为迁移证据), annotate research.md D3 verification line
 - [x] T007 [US1] Android regression protection: rerun `make android_verify DEVICE=<serial>` unchanged (specs/004 assets), confirm zero impact from shared script generalization (T001 共用驱动的回归证明)

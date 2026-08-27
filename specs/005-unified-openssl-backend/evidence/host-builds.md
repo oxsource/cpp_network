@@ -30,4 +30,4 @@
 
 清单已同步 quickstart 环境准备节。
 
-**补记（openssl 目标暴露后，2026-08-27）**：新增可复用 `//third_party/tls/host:openssl` 切片后，为 Linux 行补齐静态链接所需的系统库 `select`（linux_{x86_64,aarch64} → `-lpthread -ldl -lm`；glibc <2.34 必需，≥2.34 为兼容存根）。`--config=linux_x86_64` 下 cquery 确认：engine select 解析至 host bundle、linkopts 生效、host 原生构建回归 0 错误。编译/运行级验证仍待 Linux 执行机。
+**补记（openssl 目标暴露后，2026-08-27）**：新增可复用 `//third_party/openssl/host:openssl` 切片后，为 Linux 行补齐静态链接所需的系统库 `select`（linux_{x86_64,aarch64} → `-lpthread -ldl -lm`；glibc <2.34 必需，≥2.34 为兼容存根）。`--config=linux_x86_64` 下 cquery 确认：engine select 解析至 host bundle、linkopts 生效、host 原生构建回归 0 错误。编译/运行级验证仍待 Linux 执行机。

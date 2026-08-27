@@ -1,8 +1,0 @@
-# Package marker for injected external-repo BUILDs:
-#   * openssl_external.BUILD is loaded into @openssl via cpp_network_deps.bzl.
-# Host configs link the system libcurl TLS stack; the android_arm64 config
-# consumes source-built artifacts from //third_party/androidtls instead
-# (specs/004 research.md D1/D2).
-package(default_visibility = ["//visibility:public"])
-
-exports_files(["openssl_external.BUILD"])

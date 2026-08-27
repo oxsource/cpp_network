@@ -12,7 +12,7 @@
 
 **Language/Version**: C++17；Bazel 6.5.0；构建驱动延续 005 的 genrule 模式（本特性第三方侧改用 CMake，见 research D2 前提）
 
-**Primary Dependencies**: libwebsockets v4.5.8（新增 pin，sha256 实测）；OpenSSL 3.0.13 + curl 8.7.1（pin 不变）；libwebsockets 仅依赖 bundle 中已暴露的 `//third_party/tls/{host,android}:openssl` 切片——无第二 TLS 栈（spec FR-003）
+**Primary Dependencies**: libwebsockets v4.5.8（新增 pin，sha256 实测）；OpenSSL 3.0.13 + curl 8.7.1（pin 不变）；libwebsockets 仅依赖 bundle 中已暴露的 `//third_party/openssl/{host,android}:openssl` 切片——无第二 TLS 栈（spec FR-003）
 
 **Storage**: N/A
 
@@ -48,14 +48,16 @@ specs/006-libwebsockets-wss/
 └── tasks.md             # Phase 2 output (/speckit.tasks)
 ```
 
-### Source Code (repository root)
+### Source Code (workspace root: `cpp_network/`)
+
+> 以下文件路径均相对仓库根的 **`cpp_network/`** Bazel 工作区（仓库根另含 `specs/`）。
 
 ```text
 cpp_network_deps.bzl                      # +lws 条目（字母序）
-third_party/libwebsockets/BUILD.bazel     # lws_external.BUILD 注入声明
-third_party/libwebsockets/lws_external.BUILD
-third_party/scripts/build-lws.sh          # MODE=android|host CMake 驱动（对照 build-tls.sh）
-third_party/lws/{host,android}/BUILD.bazel  # twin-package genrule + :lws 目标
+third_party/libwebsockets/BUILD.bazel     # libwebsockets.BUILD 注入声明
+third_party/libwebsockets/libwebsockets.BUILD
+third_party/scripts/build_libwebsockets.sh          # MODE=android|host CMake 驱动（对照 build_openssl.sh）
+third_party/libwebsockets/{host,android}/BUILD.bazel  # twin-package genrule + :websockets 目标
 src/websocket/
 ├── BUILD.bazel                           # 重写占位（cc_library "websocket"，alwayslink）
 └── websocket.cc                          # Impl：lws_context/wsi 封装、状态机、缓冲

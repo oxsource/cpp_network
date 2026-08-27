@@ -19,7 +19,7 @@ strip_prefix: libwebsockets-4.5.8
 
 ## D2 构建形态：CMake 驱动 + twin-package genrule
 
-**Decision**: 复制 005 已验证形态——`third_party/lws/{host,android}/BUILD.bazel` 双包 + 共享驱动 `third_party/scripts/build-lws.sh`（MODE=android|host），内部调 **CMake**。
+**Decision**: 复制 005 已验证形态——`third_party/libwebsockets/{host,android}/BUILD.bazel` 双包 + 共享驱动 `third_party/scripts/build_libwebsockets.sh`（MODE=android|host），内部调 **CMake**。
 
 **构建前提（风险与缓解）**: lws 仅支持 CMake 构建，而本机现无 cmake → 作为平台前提安装（brew install cmake / apt install cmake），并写入 `tools/platform_setup.sh` 检查项；Bazel action 以 `--action_env=PATH` 显式携带工具路径（对照 macos_x86_64 的 TLS_HOST_ARCH 注入模式，避免沙箱 PATH 缺失）。
 
@@ -35,7 +35,7 @@ strip_prefix: libwebsockets-4.5.8
 -DLWS_STATIC_PIC=ON              # 对象层 fPIC，随共享库策略
 ```
 
-**Android 交叉要点**: cmake 工具链经由导出的 CC/CXX/AR/RANLIB（NDK llvm 工具链，与 build-tls.sh android 分支同一套导出）生效，无需独立 toolchain 文件；`-DANDROID` 由前缀 clang 三元组触发探测。
+**Android 交叉要点**: cmake 工具链经由导出的 CC/CXX/AR/RANLIB（NDK llvm 工具链，与 build_openssl.sh android 分支同一套导出）生效，无需独立 toolchain 文件；`-DANDROID` 由前缀 clang 三元组触发探测。
 
 ## D3 TLS 集成（FR-003 单栈纪律）
 

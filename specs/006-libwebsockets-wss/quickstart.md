@@ -1,5 +1,7 @@
 # Quickstart: specs/006-libwebsockets-wss
 
+> **工作区位置**：项目代码与 Bazel 工作区在仓库根的 **`cpp_network/`** 子目录（仓库根另含 `specs/`）。以下所有命令均在 `cpp_network/` 目录内执行；文中的 `src/`、`third_party/`、`tools/`、`./bazel-bin/`、`make`、`bazel` 均相对该工作区根。
+
 ## 一次性前提
 
 ```bash
@@ -34,7 +36,7 @@ make android_verify DEVICE=<serial>   # 输出含 [W1..W8] 追加段；退出码
 
 ```bash
 # 单一事实源改版本号后：
-touch third_party/scripts/build-lws.sh && bazel clean && make verify && make android_build DEVICE=<serial>
+touch third_party/scripts/build_libwebsockets.sh && bazel clean && make verify && make android_build DEVICE=<serial>
 ```
 
 实测基线（005 同法）：清缓存全量 ≈2min/平台段，预算余量充足。`deps_audit` 扩展断言：零 `-lwebsockets` 直链绕道。

@@ -48,14 +48,16 @@ specs/005-unified-openssl-backend/
     └── symbol-visibility.md   # 导出符号契约与审计方法
 ```
 
-### Source Code (repository root)
+### Source Code (workspace root: `cpp_network/`)
+
+> 以下文件路径均相对仓库根的 **`cpp_network/`** Bazel 工作区（仓库根另含 `specs/`）。
 
 ```text
-third_party/scripts/build-tls.sh      # 由 build-android-tls.sh 泛化：MODE=android|host，
+third_party/scripts/build_openssl.sh      # 由 build_openssl.sh 泛化：MODE=android|host，
                                       #   host 按 uname 选 Configure 目标与原生工具链
-third_party/androidtls/BUILD.bazel    # 目录更名建议→ third_party/tls_bundle/；
+third_party/openssl/{host,android}/BUILD.bazel  # 目录更名（androidtls→tls→openssl 落定）；
                                       #   genrule 增加 host 变体目标（同目标名跨配置隔离）
-src/http/BUILD.bazel                  # select 收敛：无条件依赖 :tls_bundle，
+src/http/BUILD.bazel                  # select 收敛：无条件依赖 //third_party/openssl/{host,android}:curl，
                                       #   删除 -lcurl 分支与 android 专属注入
 .bazelrc                              # 移除 host 无关噪音项；android action_env 保留
 tools/android_device.sh               # 注释更新（机制名不变）
@@ -67,7 +69,7 @@ specs/004-android-https-push-run/research.md  # 追加 D14 交叉引用注记（
 AGENTS.md                             # SPECKIT 指向本 plan
 ```
 
-**Structure Decision**: 构建资产保持单一定义点——脚本一份、genrule 一份、注入清单沿用；目录重命名与否在执行时依据 `bazel query` 影响面决定（倾向最小扰动：保留 `androidtls` 包名但文档标注其承载全平台）。
+**Structure Decision**: 构建资产保持单一定义点——脚本一份、genrule 一份、注入清单沿用；目录重命名与否在执行时依据 `bazel query` 影响面决定（最终落定为 `third_party/openssl/` 单包承载全平台）。
 
 ## Constitution Check (post-design)
 
