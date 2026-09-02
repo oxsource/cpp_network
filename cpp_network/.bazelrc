@@ -24,12 +24,15 @@ common --repository_cache=~/.cache/bazel/repository
 # Test output
 build --test_output=errors
 
-# Platform aliases (mirror graph_runtime conventions)
-build:macos_arm64   --platforms=//platforms:macos_arm64
-build:macos_x86_64  --platforms=//platforms:macos_x86_64
-build:linux_x86_64  --platforms=//platforms:linux_x86_64
-build:linux_aarch64 --platforms=//platforms:linux_aarch64
-build:android_arm64 --platforms=//platforms:android_arm64
+# Platform aliases (mirror graph_runtime conventions). Qualified with the
+# workspace name so the same .bazelrc works both inside this repo and when
+# consumed as an external repository (@cpp_network//platforms:... resolves in
+# both cases).
+build:macos_arm64   --platforms=@cpp_network//platforms:macos_arm64
+build:macos_x86_64  --platforms=@cpp_network//platforms:macos_x86_64
+build:linux_x86_64  --platforms=@cpp_network//platforms:linux_x86_64
+build:linux_aarch64 --platforms=@cpp_network//platforms:linux_aarch64
+build:android_arm64 --platforms=@cpp_network//platforms:android_arm64
 
 # Android NDK cc_toolchain (specs/004): registered only under the android
 # config, so host builds never fetch @androidndk and stay NDK-free (FR-010).

@@ -4,6 +4,6 @@ build --cxxopt=-std=c++17
 build --host_cxxopt=-std=c++17
 build --enable_platform_specific_config
 
-build:macos_arm64 --platforms=//platforms:macos_arm64
+build:macos_arm64 --platforms=@cpp_network//platforms:macos_arm64
 
 try-import %workspace%/.user.bazelrc
