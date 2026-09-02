@@ -1,0 +1,25 @@
+name: version
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: source tarball
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build source tarball
+        run: |
+          git archive --format=tar.gz \
+            --prefix="cpp_network-${{ github.ref_name }}/" \
+            -o "cpp_network-${{ github.ref_name }}.tar.gz" HEAD
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: "cpp_network-${{ github.ref_name }}.tar.gz"
