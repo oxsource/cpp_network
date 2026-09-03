@@ -112,6 +112,7 @@ export LDFLAGS="-L$INSTALL_DIR/lib ${ARCH_FLAG:-}"
     --without-libpsl --without-libidn2 --without-brotli --without-zstd \
     --without-zlib --without-librtmp --without-nghttp2 --without-libssh2 \
     --without-ca-path --without-ca-bundle \
+    --disable-manual \
     --disable-shared --enable-static \
     --disable-dependency-tracking \
     --enable-http \
@@ -120,6 +121,11 @@ export LDFLAGS="-L$INSTALL_DIR/lib ${ARCH_FLAG:-}"
     --disable-imap --disable-pop3 --disable-smtp --disable-scp --disable-sftp \
     --disable-mqtt --disable-websockets \
     "--prefix=$INSTALL_DIR"
+
+# Constrain parallelism: upstream -j "$NCPU" (all cores) spawns hundreds of
+# perl/doc jobs when building curl docs, which OOMs on memory-limited macOS.
+# --disable-manual (above) drops doc generation; cap NCPU to keep it stable.
+NCPU=2
 
 make -j "$NCPU" >/dev/null
 make install >/dev/null
